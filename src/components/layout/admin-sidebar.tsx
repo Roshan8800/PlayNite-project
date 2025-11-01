@@ -27,7 +27,6 @@ import {
 import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
-import { SheetTitle, SheetDescription } from '../ui/sheet';
 
 const menuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutGrid },
@@ -44,8 +43,6 @@ export default function AdminSidebar() {
 
   return (
     <Sidebar side="left" collapsible="icon" variant="sidebar" className="border-r">
-       <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
-       <SheetDescription className="sr-only">A list of admin navigation links.</SheetDescription>
       <SidebarHeader className="flex items-center justify-between p-2">
         <div className="group-data-[collapsible=icon]:hidden">
           <Logo />
@@ -81,3 +78,5 @@ export default function AdminSidebar() {
     </Sidebar>
   );
 }
+
+    
