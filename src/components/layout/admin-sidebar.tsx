@@ -4,17 +4,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Bell,
   LayoutGrid,
   Settings,
   ShieldCheck,
-  Upload,
   Users,
   Video,
   FileCheck,
   List,
-  SheetTitle,
-  SheetDescription,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -24,8 +20,9 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
-  SidebarFooter
+  SidebarFooter,
 } from '@/components/ui/sidebar';
+import { SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';

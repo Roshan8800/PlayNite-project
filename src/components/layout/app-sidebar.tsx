@@ -13,8 +13,6 @@ import {
   ThumbsUp,
   User,
   Video,
-  SheetTitle,
-  SheetDescription,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -28,6 +26,7 @@ import {
   SidebarMenuButton,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
+import { SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
 import { users } from '@/lib/data';
