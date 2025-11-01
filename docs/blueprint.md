@@ -1,0 +1,117 @@
+# **App Name**: PlayNite
+
+## Core Features:
+
+- User Authentication: Secure user registration, login, and profile management with email verification.
+- Video Streaming: High-quality video streaming with adaptive bitrate support. Each video stream is securely embedded via a token authorized by an LLM-powered tool that scans for prohibited material before token distribution.
+- Curated Video Library: Categorized video library managed by admins, ensuring organized content discovery.
+- Admin Panel: Admin interface for managing videos, users, and app settings.
+- Bulk Operations: Ability for admins to perform bulk operations such as video uploads, categorization, and user management.
+- Search and Filters: Robust search and filtering options to easily find content.
+- Side Navigation Drawer: Implement a side navigation drawer accessible via a hamburger menu (☰) on the top-right corner of the app, and a back button (←) for navigation.
+- Video Playback Screen: Dedicated screen for video playback with controls for play/pause, volume, full-screen mode, and resolution settings.
+- Category Browsing Screen: Screen to browse videos by category with visually appealing category thumbnails.
+- Search Results Screen: Display search results in an organized manner with video previews and titles.
+- User Profile Screen: Screen to view and manage user profile information, viewing history, and settings.
+- Admin Dashboard: Dashboard for admins to monitor app usage, manage content, and user accounts.
+- Video Upload Screen: Screen for admins to upload new videos with metadata such as title, description, and category.
+- User Management Screen: Screen for admins to manage user accounts, including roles, permissions, and account status.
+- Video History: Track and display user's video viewing history.
+- Watch Later: Allow users to save videos to a 'Watch Later' list.
+- Offline Downloads: Enable users to download videos for offline viewing.
+- Video Recommendations: Suggest videos based on viewing history and preferences.
+- Interactive Video Controls: Implement gesture-based controls for playback (swipe left/right for skip, up/down for volume).
+- Content Ratings: Allow users to rate videos.
+- Comments Section: Enable users to comment on videos.
+- Sharing: Allow users to share videos on other platforms.
+- Live Streaming: Introduce live video streaming functionality.
+- Push Notifications: Send push notifications for new content, updates, etc.
+- Advanced Search: Advanced search features like content type, date uploaded, etc.
+- Accessibility Features: Add features like voice control and screen reader support.
+- Report Content: Allow users to report inappropriate content.
+- Privacy Settings: Provide users with granular privacy settings.
+- Parental Controls: Implement parental control features.
+- Gesture: Double Tap to Toggle Play/Pause: Double tap on the video to play or pause.
+- Gesture: Pinch to Zoom: Pinch on the video to zoom in or out.
+- Gesture: Swipe Up/Down on Right Side for Volume: Swipe up or down on the right side of the screen to adjust the volume.
+- Gesture: Swipe Up/Down on Left Side for Brightness: Swipe up or down on the left side of the screen to adjust the brightness.
+- Gesture: Long Press for Speed Control: Long press on the video to show speed control options.
+- Gesture: Horizontal Swipe for Fast Forward/Rewind: Swipe horizontally to fast forward or rewind the video.
+- Gesture: Tap with Two Fingers for Mute/Unmute: Tap with two fingers to quickly mute or unmute the video.
+- Gesture: Pull Down to Refresh: Pull down on the video list to refresh content.
+- Gesture: Swipe to Dismiss: Swipe to dismiss a recommendation or notification.
+- Gesture: Long Press to Add to Watch Later: Long press on a video thumbnail to add it to 'Watch Later'.
+- History Screen: Dedicated screen to show user viewing history
+- Downloads Screen: Dedicated screen to show user's downloaded content
+- Settings Screen: Screen for all app settings, including account and preferences.
+- Notifications Screen: Displays all user notifications
+- FAQ/Help Screen: Provides answers to frequently asked questions and app usage guidelines.
+- Terms of Service Screen: Displays the app's terms of service.
+- Privacy Policy Screen: Displays the app's privacy policy.
+- About Us Screen: Provides information about the app and its developers.
+- Contact Us Screen: Allows users to contact support or provide feedback.
+- Report Content Screen: Screen to allow users to report inappropriate videos
+- Admin Report Management Screen: Screen to show the reports to the admin
+- Category Management Screen: Screen for admins to manage video categories.
+- Content Approval Queue: A queue for admins to approve or reject newly uploaded content.
+- User Roles and Permissions: Screen for admins to manage user roles and permissions.
+- Audit Logs: Logs for all admin actions for security and accountability.
+- Content Scheduling: Feature to schedule the publishing of videos.
+- Batch Metadata Editing: Tool to edit metadata for multiple videos at once.
+- Content Flagging: Users can flag content with different issue types (e.g., copyright, inappropriate content).
+- Moderation Queue: A queue for moderators to review flagged content.
+- Content Blacklist: A blacklist of prohibited content.
+- User Blocking: Allow users to block other users
+- User Muting: Allow users to mute other users
+- Watermark: Add a watermark to videos to protect copyright
+- Gesture: Three-Finger Tap for Screenshot: Capture a screenshot with a three-finger tap.
+- Gesture: Two-Finger Swipe for Settings: Quickly access settings by swiping with two fingers.
+- Gesture: Rotate for Fullscreen: Rotate the device to toggle fullscreen mode.
+- Gesture: Shake to Random Video: Shake the device to play a random video.
+- AI: Personalized Content Curation: An AI tool curates content based on user viewing habits and preferences.
+- AI: Smart Search Suggestions: AI-powered search suggestions to help users find content more easily.
+- AI: Content Summarization: AI provides brief summaries of videos to give users an overview.
+- AI: Real-time Translation: AI translates video titles, descriptions, and comments in real-time.
+- AI: Age Verification: AI-powered age verification to ensure compliance with legal requirements.
+- AI: Sentiment Analysis: AI analyzes user comments for sentiment to improve moderation.
+- AI: Content Recommendation Engine: AI tool provides video recommendations based on collaborative filtering and content-based methods.
+- AI: Tag Generation: AI tool automatically generates tags for videos to improve searchability.
+- AI: Content Moderation: AI assists in content moderation by automatically identifying and flagging inappropriate content.
+- AI: Chatbot Support: AI chatbot for answering user questions and providing support.
+- Adaptive Streaming: Automatically adjusts video quality based on network conditions.
+- Playback Speed Control: Allows users to adjust the playback speed of videos.
+- Looping: Allows users to loop a video continuously.
+- Picture-in-Picture (PiP): Allows users to watch videos in a floating window while using other apps.
+- Cast to Device: Allows users to cast videos to other devices like TVs.
+- Audio Track Selection: Allows users to select different audio tracks for videos.
+- Subtitle Support: Supports displaying subtitles for videos.
+- Volume Boost: Allows users to boost the volume of videos beyond the maximum level.
+- Screen Rotation Lock: Allows users to lock the screen rotation during video playback.
+- Sleep Timer: Allows users to set a timer to automatically stop video playback.
+- Gesture: Pull Down to Refresh: Pull down on the video list to refresh content.
+- Gesture: Swipe to Dismiss: Swipe to dismiss a recommendation or notification.
+- Gesture: Long Press to Add to Watch Later: Long press on a video thumbnail to add it to 'Watch Later'.
+- Gesture: Swipe to Dismiss: Swipe to dismiss a recommendation or notification.
+- Gesture: Long Press to Add to Watch Later: Long press on a video thumbnail to add it to 'Watch Later'.
+- Gesture: Three-Finger Tap for Screenshot: Capture a screenshot with a three-finger tap.
+- Content Flagging: Users can flag content with different issue types (e.g., copyright, inappropriate content).
+- Content Blacklist: A blacklist of prohibited content.
+- Gesture: Three-Finger Tap for Screenshot: Capture a screenshot with a three-finger tap.
+- Gesture: Two-Finger Swipe for Settings: Quickly access settings by swiping with two fingers.
+- User Blocking: Allow users to block other users
+- User Muting: Allow users to mute other users
+- Gesture: Three-Finger Tap for Screenshot: Capture a screenshot with a three-finger tap.
+- Gesture: Two-Finger Swipe for Settings: Quickly access settings by swiping with two fingers.
+- Gesture: Rotate for Fullscreen: Rotate the device to toggle fullscreen mode.
+- Gesture: Shake to Random Video: Shake the device to play a random video.
+
+## Style Guidelines:
+
+- Primary color: Deep purple (#4A148C) to convey sophistication and luxury.
+- Background color: Dark gray (#212121) for a modern and immersive viewing experience.
+- Accent color: Vibrant pink (#E91E63) to highlight interactive elements and calls to action.
+- Headline font: 'Playfair', a serif, for elegant headings.
+- Body font: 'PT Sans', a sans-serif, for clear and readable content.
+- Use modern, minimalist icons with a focus on clarity and ease of understanding.
+- Clean and intuitive layout with a focus on easy navigation and content discovery.
+- Subtle animations for transitions and interactive elements to enhance user engagement.

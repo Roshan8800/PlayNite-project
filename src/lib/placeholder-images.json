@@ -1,3 +1,148 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "video-1",
+      "description": "Abstract neon lights",
+      "imageUrl": "https://images.unsplash.com/photo-1637593860015-3079b2c3911c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxhYnN0cmFjdCUyMG5lb258ZW58MHx8fHwxNzYxOTI1NTIwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract neon"
+    },
+    {
+      "id": "video-2",
+      "description": "Cyberpunk city street",
+      "imageUrl": "https://images.unsplash.com/photo-1551771685-c367c9127a03?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjeWJlcnB1bmslMjBjaXR5fGVufDB8fHx8MTc2MTk2MjQ0OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cyberpunk city"
+    },
+    {
+      "id": "video-3",
+      "description": "Person meditating at sunrise",
+      "imageUrl": "https://images.unsplash.com/photo-1745678499645-29292069ee4a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtZWRpdGF0aW9uJTIwc3VucmlzZXxlbnwwfHx8fDE3NjE5NjI0NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "meditation sunrise"
+    },
+    {
+      "id": "video-4",
+      "description": "Chef plating a gourmet dish",
+      "imageUrl": "https://images.unsplash.com/photo-1541832676-9b763b0239ab?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxnb3VybWV0JTIwZm9vZHxlbnwwfHx8fDE3NjE5NDU0Mzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gourmet food"
+    },
+    {
+      "id": "video-5",
+      "description": "Mountain landscape with a lake",
+      "imageUrl": "https://images.unsplash.com/photo-1597655601841-214a4cfe8b2c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtb3VudGFpbiUyMGxha2V8ZW58MHx8fHwxNzYxODQ3MjE4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mountain lake"
+    },
+    {
+      "id": "video-6",
+      "description": "Artist painting on a canvas",
+      "imageUrl": "https://images.unsplash.com/photo-1589996448606-27d38c70f3bc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxhcnRpc3QlMjBwYWludGluZ3xlbnwwfHx8fDE3NjE4ODA3NzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "artist painting"
+    },
+    {
+      "id": "video-7",
+      "description": "Close-up of a vintage record player",
+      "imageUrl": "https://images.unsplash.com/photo-1594328082928-28ddcbc316c0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHx2aW50YWdlJTIwcmVjb3JkfGVufDB8fHx8MTc2MTk2MjQ0OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "vintage record"
+    },
+    {
+      "id": "video-8",
+      "description": "Time-lapse of city traffic at night",
+      "imageUrl": "https://images.unsplash.com/photo-1680968738428-04042c823596?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjaXR5JTIwdHJhZmZpY3xlbnwwfHx8fDE3NjE5MTg3MzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city traffic"
+    },
+    {
+      "id": "video-9",
+      "description": "Person coding on a laptop",
+      "imageUrl": "https://images.unsplash.com/photo-1559842135-8d5e4214ae77?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjb2RpbmclMjBsYXB0b3B8ZW58MHx8fHwxNzYxODM5Mzg2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "coding laptop"
+    },
+    {
+      "id": "video-10",
+      "description": "A rocket launching into space",
+      "imageUrl": "https://images.unsplash.com/photo-1614642240262-a452c2c11724?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxyb2NrZXQlMjBsYXVuY2h8ZW58MHx8fHwxNzYxODk0MDY0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "rocket launch"
+    },
+    {
+      "id": "video-11",
+      "description": "A documentary about ocean life",
+      "imageUrl": "https://images.unsplash.com/photo-1515555585025-54136276b6e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxvY2VhbiUyMGxpZmV8ZW58MHx8fHwxNzYxOTYyNDQ5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "ocean life"
+    },
+    {
+      "id": "video-12",
+      "description": "A historical drama series",
+      "imageUrl": "https://images.unsplash.com/photo-1760204978375-3a661ba765c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxoaXN0b3JpY2FsJTIwZHJhbWF8ZW58MHx8fHwxNzYxOTI3Nzk2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "historical drama"
+    },
+    {
+      "id": "video-player-main",
+      "description": "Main video player background",
+      "imageUrl": "https://images.unsplash.com/photo-1688135110128-a77c3638003e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxhYnN0cmFjdCUyMGNpbmVtYXxlbnwwfHx8fDE3NjE5NDUxNTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract cinema"
+    },
+    {
+      "id": "category-1",
+      "description": "Action category thumbnail",
+      "imageUrl": "https://images.unsplash.com/photo-1671490995072-f01da03f7381?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxhY3Rpb24lMjBleHBsb3Npb258ZW58MHx8fHwxNzYxOTU0NTM3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "action explosion"
+    },
+    {
+      "id": "category-2",
+      "description": "Comedy category thumbnail",
+      "imageUrl": "https://images.unsplash.com/photo-1665819256068-2fd1a441a683?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjb21lZHklMjBzbWlsaW5nfGVufDB8fHx8MTc2MTk2MjQ0OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "comedy smiling"
+    },
+    {
+      "id": "category-3",
+      "description": "Documentary category thumbnail",
+      "imageUrl": "https://images.unsplash.com/photo-1736710744611-9ceb1f435c02?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxuYXR1cmUlMjBkb2N1bWVudGFyeXxlbnwwfHx8fDE3NjE4NTYyNzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "nature documentary"
+    },
+    {
+      "id": "category-4",
+      "description": "Sci-Fi category thumbnail",
+      "imageUrl": "https://images.unsplash.com/photo-1749834986816-8dce75cce60c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxzY2ktZmklMjBzcGFjZXNoaXB8ZW58MHx8fHwxNzYxOTQ4MDIwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sci-fi spaceship"
+    },
+    {
+      "id": "category-5",
+      "description": "Horror category thumbnail",
+      "imageUrl": "https://images.unsplash.com/photo-1730212601905-35da06c1cb3f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxob3Jyb3IlMjBzcG9va3l8ZW58MHx8fHwxNzYxOTYyNDQ5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "horror spooky"
+    },
+    {
+      "id": "category-6",
+      "description": "Romance category thumbnail",
+      "imageUrl": "https://images.unsplash.com/photo-1544142293-4858ce9d4ad1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxyb21hbmNlJTIwY291cGxlfGVufDB8fHx8MTc2MTkyNDE2NXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "romance couple"
+    },
+    {
+      "id": "avatar-1",
+      "description": "User avatar 1",
+      "imageUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjE4ODIwMzV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "avatar-2",
+      "description": "User avatar 2",
+      "imageUrl": "https://images.unsplash.com/photo-1598625873873-52f9aefd7d9d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzYxODg1MDQyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smiling"
+    },
+    {
+      "id": "avatar-3",
+      "description": "User avatar 3",
+      "imageUrl": "https://images.unsplash.com/photo-1612694790876-bec1383fbb40?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtYW4lMjBnbGFzc2VzfGVufDB8fHx8MTc2MTkxODMyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man glasses"
+    },
+    {
+      "id": "avatar-4",
+      "description": "User avatar 4",
+      "imageUrl": "https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwZXJzb24lMjBoYXBweXxlbnwwfHx8fDE3NjE4ODI3MjV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person happy"
+    },
+    {
+      "id": "avatar-5",
+      "description": "User avatar 5",
+      "imageUrl": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2MTkwOTQyNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    }
+  ]
 }
