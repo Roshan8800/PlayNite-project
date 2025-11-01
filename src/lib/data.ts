@@ -11,6 +11,7 @@ export type Video = {
   duration: string;
   description: string;
   channelAvatarUrl: string;
+  videoUrl: string;
 };
 
 export type Category = {
@@ -50,6 +51,7 @@ export const videos: Video[] = [
     duration: '04:32',
     description: 'A journey through the neon-lit streets of a retro-futuristic city. Powered by AI-enhanced visuals and a synth-heavy soundtrack.',
     channelAvatarUrl: getImage('avatar-1').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
   },
   {
     id: '2',
@@ -62,6 +64,7 @@ export const videos: Video[] = [
     duration: '15:45',
     description: 'An anthology of short films exploring life in a high-tech, low-life metropolis. Features AI-generated characters and plotlines.',
     channelAvatarUrl: getImage('avatar-2').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4'
   },
   {
     id: '3',
@@ -74,6 +77,7 @@ export const videos: Video[] = [
     duration: '22:10',
     description: 'Learn mindfulness techniques for the digital age. This session is enhanced with AI-driven personalized relaxation cues.',
     channelAvatarUrl: getImage('avatar-3').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
   },
   {
     id: '4',
@@ -86,6 +90,7 @@ export const videos: Video[] = [
     duration: '08:19',
     description: 'Michelin-star chef Ana Ros shows you how to turn your dishes into works of art. Features AI-powered suggestions for presentation.',
     channelAvatarUrl: getImage('avatar-4').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
   },
   {
     id: '5',
@@ -98,6 +103,7 @@ export const videos: Video[] = [
     duration: '45:00',
     description: 'A breathtaking 4K documentary on the Alpine wilderness, with AI-enhanced color grading and a dynamic, responsive score.',
     channelAvatarUrl: getImage('avatar-5').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
   },
   {
     id: '6',
@@ -110,6 +116,7 @@ export const videos: Video[] = [
     duration: '12:30',
     description: 'Watch as a blank canvas is transformed into a masterpiece of abstract art. The process is analyzed in real-time by a creative AI.',
     channelAvatarUrl: getImage('avatar-1').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
   },
   {
     id: '7',
@@ -122,6 +129,7 @@ export const videos: Video[] = [
     duration: '18:55',
     description: 'Exploring the resurgence of vinyl records in the digital age. Includes AI-powered audio restoration of classic tracks.',
     channelAvatarUrl: getImage('avatar-2').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4'
   },
   {
     id: '8',
@@ -134,6 +142,7 @@ export const videos: Video[] = [
     duration: '03:15',
     description: 'A stunning hyper-lapse of city life from dusk till dawn. The video pathing was optimized by an AI for the most dynamic shots.',
     channelAvatarUrl: getImage('avatar-3').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4'
   },
   {
     id: '9',
@@ -146,6 +155,7 @@ export const videos: Video[] = [
     duration: '01:15:20',
     description: 'A comprehensive tutorial on creating a neural network from scratch. The code is explained by an AI assistant.',
     channelAvatarUrl: getImage('avatar-4').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4'
   },
   {
     id: '10',
@@ -158,6 +168,7 @@ export const videos: Video[] = [
     duration: '55:30',
     description: 'Experience the thrill of space exploration with stunning visuals from recent missions. Includes AI-generated simulations of exoplanets.',
     channelAvatarUrl: getImage('avatar-5').url,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
   },
 ];
 

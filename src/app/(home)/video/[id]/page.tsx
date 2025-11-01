@@ -27,8 +27,10 @@ import {
   Volume2,
   VolumeX,
   Settings,
+  Pause,
 } from 'lucide-react';
 import Link from 'next/link';
+import { VideoPlayer } from '@/components/video-player';
 
 export default async function VideoPage({ params }: { params: { id: string } }) {
   const video = videos.find((v) => v.id === params.id) || videos[0];
@@ -45,41 +47,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     <div className="container mx-auto max-w-7xl px-0 py-0">
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="w-full lg:w-2/3">
-          <div
-            className="relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl bg-black"
-            data-ai-hint="double tap toggle play pause, pinch zoom video, long press speed control, horizontal swipe fast forward rewind, two finger tap mute unmute, rotate fullscreen"
-          >
-            <Image
-              src={videoPlayerImage.url}
-              alt="Video player"
-              fill
-              className="object-cover"
-              data-ai-hint={videoPlayerImage.hint}
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <Button variant="ghost" size="icon" className="h-20 w-20 text-white hover:bg-white/20">
-                <Play className="h-12 w-12" fill="white" />
-              </Button>
-            </div>
-            <div
-                className="absolute left-0 top-0 h-full w-1/3"
-                data-ai-hint="swipe up down left brightness"
-            />
-            <div
-                className="absolute right-0 top-0 h-full w-1/3"
-                data-ai-hint="swipe up down right volume"
-            />
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
-                <div className="flex items-center gap-4 text-white">
-                    <Button variant="ghost" size="icon" className="hover:bg-white/20"><Play className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="hover:bg-white/20"><Volume2 className="h-5 w-5" /></Button>
-                    <div className="text-xs">01:23 / {video.duration}</div>
-                    <div className="flex-grow" />
-                    <Button variant="ghost" size="icon" className="hover:bg-white/20"><Settings className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="hover:bg-white/20"><Maximize className="h-5 w-5" /></Button>
-                </div>
-            </div>
-          </div>
+          <VideoPlayer video={video} />
           <div className="mt-4">
             <h1 className="text-3xl font-headline font-bold">{video.title}</h1>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-4">
