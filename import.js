@@ -5,7 +5,8 @@ const csv = require('csv-parser');
 // Initialize Firebase Admin SDK with service account key
 const serviceAccount = require('./service-account.json');
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://playnite-30409-default-rtdb.firebaseio.com"
 });
 
 const db = admin.firestore();
