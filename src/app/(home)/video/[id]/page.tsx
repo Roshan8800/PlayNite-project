@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import {
   Avatar,
@@ -6,31 +7,22 @@ import {
 } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { VideoCard } from '@/components/video-card';
-import { videos, videoPlayerImage } from '@/lib/data';
+import { videos } from '@/lib/data';
 import { summarizeContent } from '@/ai/flows/content-summarization';
 import { generateTags } from '@/ai/flows/ai-tag-generation';
 import {
   Bell,
   Download,
-  Maximize,
-  Mic,
-  Minus,
-  Play,
-  Plus,
   Share2,
   ThumbsDown,
   ThumbsUp,
-  Volume2,
-  VolumeX,
-  Settings,
-  Pause,
 } from 'lucide-react';
-import Link from 'next/link';
 import { VideoPlayer } from '@/components/video-player';
+import { users } from '@/lib/data';
 
 export default async function VideoPage({ params }: { params: { id: string } }) {
   const video = videos.find((v) => v.id === params.id) || videos[0];
@@ -43,6 +35,8 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
   const summaryResult = await summarizeContent({ videoTitle: video.title, videoDescription: video.description }).catch(e => ({ summary: "AI summary is currently unavailable."}));
   const tagsResult = await generateTags({ videoTitle: video.title, videoDescription: video.description }).catch(e => ({ tags: ["AI", "Tags", "Unavailable"]}));
   
+  const commentUser = users[1];
+
   return (
     <div className="container mx-auto max-w-7xl px-0 py-0">
       <div className="flex flex-col lg:flex-row gap-8">
@@ -89,8 +83,8 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
               <h2 className="text-2xl font-bold">Comments (1,345)</h2>
               <div className="flex gap-4">
                 <Avatar>
-                    <AvatarImage src="https://picsum.photos/seed/301/100/100" alt="User" data-ai-hint="person portrait"/>
-                    <AvatarFallback>A</AvatarFallback>
+                    <AvatarImage src={commentUser.avatarUrl} alt={commentUser.name} data-ai-hint="person portrait"/>
+                    <AvatarFallback>{commentUser.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-grow">
                   <Input placeholder="Add a comment..." />

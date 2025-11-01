@@ -1,17 +1,18 @@
+
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Bell,
-  Home,
   LayoutGrid,
   Settings,
   ShieldCheck,
   Upload,
   Users,
   Video,
-  FileCheck
+  FileCheck,
+  List,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -31,7 +32,7 @@ const menuItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutGrid },
   { href: '/admin/videos', label: 'Videos', icon: Video },
   { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/categories', label: 'Categories', icon: Home },
+  { href: '/admin/categories', label: 'Categories', icon: List },
   { href: '/admin/approval', label: 'Approval Queue', icon: FileCheck },
   { href: '/admin/reports', label: 'Reports', icon: ShieldCheck },
   { href: '/admin/settings', label: 'Settings', icon: Settings },

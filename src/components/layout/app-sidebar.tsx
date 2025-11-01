@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
+import { users } from '@/lib/data';
 
 const menuItems = [
   { href: '/home', label: 'Home', icon: Home },
@@ -39,6 +41,7 @@ const menuItems = [
 
 export default function AppSidebar() {
   const pathname = usePathname();
+  const user = users[0];
 
   return (
     <Sidebar side="right" collapsible="offcanvas" className="border-l">
@@ -69,12 +72,12 @@ export default function AppSidebar() {
       <SidebarFooter className="p-2">
         <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted">
             <Avatar>
-              <AvatarImage src="https://picsum.photos/seed/301/100/100" alt="User" data-ai-hint="person portrait" />
-              <AvatarFallback>A</AvatarFallback>
+              <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="person portrait" />
+              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-grow">
-              <p className="font-semibold">Alex Johnson</p>
-              <p className="text-sm text-muted-foreground">alex@example.com</p>
+              <p className="font-semibold">{user.name}</p>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
             </div>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-2">

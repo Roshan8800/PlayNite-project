@@ -1,16 +1,16 @@
+
 'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  Bell,
   Home,
   Menu,
   Search,
   Settings,
   User,
-  Video,
+  Shield,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import { useState } from 'react';
 import { smartSearchSuggestions } from '@/ai/flows/ai-search-suggestions';
 import { SearchPopover } from '../search-popover';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { users } from '@/lib/data';
 
 export default function Header() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const user = users[0];
 
   const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -108,8 +110,8 @@ export default function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="https://picsum.photos/seed/301/100/100" alt="User" data-ai-hint="person portrait"/>
-                <AvatarFallback>A</AvatarFallback>
+                <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="person portrait"/>
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
@@ -123,10 +125,12 @@ export default function Header() {
               <Link href="/settings"><Settings className="mr-2 h-4 w-4" />Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <Link href="/admin"><Home className="mr-2 h-4 w-4" />Admin Panel</Link>
+                <Link href="/admin"><Shield className="mr-2 h-4 w-4" />Admin Panel</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+                <Link href="/">Log out</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
