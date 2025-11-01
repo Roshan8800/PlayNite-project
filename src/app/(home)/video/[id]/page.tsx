@@ -30,18 +30,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 
-function VideoPageContent({ params }: { params: { id: string } }) {
+function VideoPageContent({ id }: { id: string }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
 
-  const videoRef = doc(firestore, 'videos', params.id);
+  const videoRef = doc(firestore, 'videos', id);
   const { data: video, loading: videoLoading } = useDoc(videoRef);
 
   const recommendedVideosQuery = query(
     collection(firestore, 'videos'),
     where('status', '==', 'Approved'),
-    where('__name__', '!=', params.id),
+    where('__name__', '!=', id),
     limit(10)
   );
   const { data: recommendedVideos, loading: recommendedLoading } = useCollection(recommendedVideosQuery);
@@ -228,7 +228,7 @@ function VideoPageContent({ params }: { params: { id: string } }) {
 export default function VideoPage({ params }: { params: { id: string } }) {
   return (
     <Suspense fallback={<p>Loading video...</p>}>
-      <VideoPageContent params={params} />
+      <VideoPageContent id={params.id} />
     </Suspense>
   )
 }
