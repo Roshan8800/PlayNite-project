@@ -42,9 +42,11 @@ export default function HistoryPage() {
         description: 'Your viewing history has been successfully cleared.',
       });
     } catch (e: any) {
-      // This is a complex operation, so we'll just log a generic error
-      // A more specific permission error would be hard to construct here.
-      console.error(e);
+      const permissionError = new FirestorePermissionError({
+        path: historyCollectionRef.path,
+        operation: 'delete', // This is a batch delete on a collection path
+      });
+      errorEmitter.emit('permission-error', permissionError);
       toast({
         variant: 'destructive',
         title: 'Error clearing history',

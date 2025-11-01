@@ -22,6 +22,8 @@ import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type Report = {
   id: string;
@@ -40,10 +42,18 @@ export default function AdminReportsPage() {
   const { data: reports, loading, error } = useCollection(reportsQuery);
 
   const handleResolveReport = async (reportId: string) => {
+    const reportDoc = doc(firestore, 'reports', reportId);
+    const updateData = { status: 'Resolved' };
     try {
-      await updateDoc(doc(firestore, 'reports', reportId), { status: 'Resolved' });
+      await updateDoc(reportDoc, updateData);
       toast({ title: 'Report Resolved', description: 'The report has been marked as resolved.' });
     } catch (e: any) {
+      const permissionError = new FirestorePermissionError({
+        path: reportDoc.path,
+        operation: 'update',
+        requestResourceData: updateData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
       toast({ variant: 'destructive', title: 'Error', description: e.message });
     }
   };

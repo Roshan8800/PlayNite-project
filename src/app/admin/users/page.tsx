@@ -125,7 +125,7 @@ export default function AdminUsersPage() {
                     >
                       Error: {error.message}
                     </TableCell>
-                  </TableRow.                
+                  </TableRow>                
                 )}
                 {users && users.length > 0 ? (
                   users.map((user) => (
@@ -154,7 +154,7 @@ export default function AdminUsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={(user as User).status === 'Active' ? 'secondary' : 'destructive'} className={(user as User).status === 'Active' ? 'bg-green-500/20 text-green-400 border-green-500/20' : ''}>
+                        <Badge variant={(user as User).status === 'Active' ? 'secondary' : 'destructive'} className={(user as User).status === 'Active' ? 'bg-green-500/20 text-green-700 dark:text-green-400 border-transparent' : ''}>
                           {(user as User).status || 'Active'}
                         </Badge>
                       </TableCell>
