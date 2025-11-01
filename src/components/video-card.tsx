@@ -1,9 +1,18 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import type { Video } from '@/lib/data';
-import { Clock, MoreVertical, PlayCircle } from 'lucide-react';
+import { Clock, MoreVertical, PlayCircle, PlusCircle } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 interface VideoCardProps {
   video: Video;
@@ -11,9 +20,20 @@ interface VideoCardProps {
 }
 
 export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
+  const { toast } = useToast();
+
+  const handleWatchLater = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toast({
+      title: 'Added to Watch Later',
+      description: `"${video.title}" has been saved for later.`,
+    });
+  };
+
   if (variant === 'horizontal') {
     return (
-      <Link href={`/video/${video.id}`} className="group block" data-ai-hint="long press add watch later">
+      <Link href={`/video/${video.id}`} className="group block">
         <Card className="flex h-full overflow-hidden transition-all duration-200 hover:bg-card/80 hover:shadow-md">
           <div className="relative aspect-video w-40 flex-shrink-0">
             <Image
@@ -27,18 +47,33 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
               <PlayCircle className="h-10 w-10 text-white/80" />
             </div>
           </div>
-          <CardContent className="flex-grow p-3">
+          <div className="flex-grow p-3 flex flex-col">
             <h3 className="font-semibold leading-tight line-clamp-2">{video.title}</h3>
             <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{video.channel}</p>
             <p className="text-sm text-muted-foreground mt-1">{video.views} &bull; {video.uploadedAt}</p>
-          </CardContent>
+          </div>
+          <div className="p-2">
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.preventDefault(); e.stopPropagation();}}>
+                    <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleWatchLater}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <span>Add to Watch Later</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </Card>
       </Link>
     );
   }
 
   return (
-    <Link href={`/video/${video.id}`} className="group block" data-ai-hint="long press add watch later">
+    <Link href={`/video/${video.id}`} className="group block">
       <Card className="overflow-hidden h-full flex flex-col transition-all duration-200 hover:shadow-lg hover:-translate-y-1">
         <div className="relative aspect-video">
           <Image
@@ -56,7 +91,7 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
             <span>{video.duration}</span>
           </div>
         </div>
-        <CardContent className="p-3 flex-grow">
+        <div className="p-3 flex-grow flex flex-col">
           <div className="flex items-start gap-3">
             <Avatar className="h-9 w-9 mt-1">
               <AvatarImage src={video.channelAvatarUrl} alt={video.channel} />
@@ -69,11 +104,21 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
               <p className="text-sm text-muted-foreground mt-1">{video.channel}</p>
               <p className="text-sm text-muted-foreground">{video.views} &bull; {video.uploadedAt}</p>
             </div>
-            <button className="text-muted-foreground -mr-2 p-2 rounded-full hover:bg-accent/20">
-              <MoreVertical className="w-4 h-4" />
-            </button>
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                 <Button variant="ghost" size="icon" className="-mr-2 -mt-1 h-8 w-8" onClick={(e) => { e.preventDefault(); e.stopPropagation();}}>
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleWatchLater}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <span>Add to Watch Later</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </CardContent>
+        </div>
       </Card>
     </Link>
   );

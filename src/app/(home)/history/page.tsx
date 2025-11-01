@@ -13,7 +13,7 @@ export default function HistoryPage() {
             Viewing History
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            Videos you&apos;ve watched recently.
+            Videos you've watched recently.
           </p>
         </div>
         <Button variant="destructive">Clear History</Button>

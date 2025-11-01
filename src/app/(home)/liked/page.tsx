@@ -13,7 +13,7 @@ export default function LikedVideosPage() {
           Liked Videos
         </h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          Videos you&apos;ve given a thumbs up.
+          Videos you've given a thumbs up.
         </p>
       </header>
       
@@ -28,7 +28,7 @@ export default function LikedVideosPage() {
           <Heart className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No Liked Videos</h3>
           <p className="mb-4 mt-2 text-sm text-muted-foreground">
-            You haven&apos;t liked any videos yet.
+            You haven't liked any videos yet.
           </p>
         </div>
       )}

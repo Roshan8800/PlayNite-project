@@ -75,7 +75,7 @@ export default function AdminCategoriesPage() {
                     <CardDescription>
                         Create a new category for your videos.
                     </CardDescription>
-                </CardHeader>
+                </Header>
                 <CardContent className="space-y-4">
                     <Input placeholder="Category Name" />
                     <Input type="file" />

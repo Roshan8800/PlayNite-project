@@ -13,6 +13,8 @@ import {
   ThumbsUp,
   User,
   Video,
+  SheetTitle,
+  SheetDescription,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -45,6 +47,10 @@ export default function AppSidebar() {
 
   return (
     <Sidebar side="right" collapsible="offcanvas" className="border-l">
+      <SheetTitle className="sr-only">App Menu</SheetTitle>
+      <SheetDescription className="sr-only">
+        Navigate the main sections of the application.
+      </SheetDescription>
       <SidebarHeader>
         <Logo />
       </SidebarHeader>
@@ -95,5 +101,3 @@ export default function AppSidebar() {
     </Sidebar>
   );
 }
-
-    

@@ -22,7 +22,7 @@ export default function AdminDashboardPage() {
           Admin Dashboard
         </h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          Welcome back, Admin. Here&apos;s a summary of your app.
+          Welcome back, Admin. Here's a summary of your app.
         </p>
       </header>
       

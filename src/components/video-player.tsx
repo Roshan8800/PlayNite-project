@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Video } from '@/lib/data';
@@ -144,7 +145,7 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
     <div className={cn("relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl bg-black group", className)}>
       <video
         ref={videoRef}
-        src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+        src={video.videoUrl}
         className="w-full h-full object-cover"
         onClick={togglePlay}
       />
