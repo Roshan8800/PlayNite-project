@@ -6,12 +6,14 @@
 import { FirebaseOptions, initializeApp } from 'firebase/app';
 
 const firebaseConfig: FirebaseOptions = {
-  apiKey: "API_KEY",
-  authDomain: "AUTH_DOMAIN",
-  projectId: "PROJECT_ID",
-  storageBucket: "STORAGE_BUCKET",
-  messagingSenderId: "MESSAGING_SENDER_ID",
-  appId: "APP_ID"
+  apiKey: "AIzaSyDZ3NMrHT8sLqS6PIBbaUOwa9ceyMGGVkA",
+  authDomain: "playnite-30409.firebaseapp.com",
+  databaseURL: "https://playnite-30409-default-rtdb.firebaseio.com",
+  projectId: "playnite-30409",
+  storageBucket: "playnite-30409.firebasestorage.app",
+  messagingSenderId: "930117680987",
+  appId: "1:930117680987:web:ffb09a2738f112e470247e",
+  measurementId: "G-H4LHEW1TLV"
 };
 
 function getFirebaseConfig() {
