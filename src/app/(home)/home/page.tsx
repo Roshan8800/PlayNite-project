@@ -50,7 +50,7 @@ export default function HomePage() {
         align: 'start',
         loop: videos && videos.length > 5,
       }}
-      className="w-full"
+      className="w-full animate-fade-in"
     >
       <CarouselContent>
         {loading
@@ -66,10 +66,11 @@ export default function HomePage() {
                 </div>
               </CarouselItem>
             ))
-          : videos?.map((video: Video) => (
+          : videos?.map((video: Video, index) => (
               <CarouselItem
                 key={video.id}
                 className="md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                style={{ animationDelay: `${index * 100}ms`}}
               >
                 <VideoCard video={video} />
               </CarouselItem>
@@ -81,7 +82,7 @@ export default function HomePage() {
   );
 
   const renderVideoGrid = (videos: Video[] | undefined, loading: boolean) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
       {loading
         ? Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="space-y-2">
@@ -90,14 +91,16 @@ export default function HomePage() {
               <Skeleton className="h-4 w-1/2" />
             </div>
           ))
-        : videos?.map((video: Video) => (
-            <VideoCard key={video.id} video={video} />
+        : videos?.map((video: Video, index) => (
+            <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms`}}>
+                <VideoCard video={video} />
+            </div>
           ))}
     </div>
   );
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-12 animate-fade-in">
       <section>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold font-headline">Featured Videos</h2>
@@ -114,13 +117,15 @@ export default function HomePage() {
             <Link href="/categories">View All</Link>
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 animate-fade-in">
           {categoriesLoading
             ? Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-32 w-full md:h-40" />
               ))
-            : categories?.map((category: any) => (
-                <CategoryCard key={category.id} category={category as Category} />
+            : categories?.map((category: any, index) => (
+                <div key={category.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms`}}>
+                  <CategoryCard category={category as Category} />
+                </div>
               ))}
         </div>
       </section>

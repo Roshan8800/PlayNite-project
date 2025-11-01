@@ -70,7 +70,7 @@ export default function HistoryPage() {
 
     if (history?.length === 0) {
       return (
-         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center h-[400px]">
+         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center h-[400px] animate-fade-in">
           <HistoryIcon className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No Viewing History</h3>
           <p className="mb-4 mt-2 text-sm text-muted-foreground">
@@ -85,15 +85,17 @@ export default function HistoryPage() {
     // A production app would fetch video details based on IDs.
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {history?.map((video: any) => (
-          <VideoCard key={video.id} video={video} />
+        {history?.map((video: any, index) => (
+          <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms`}}>
+            <VideoCard video={video} />
+          </div>
         ))}
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-headline font-bold tracking-tight">

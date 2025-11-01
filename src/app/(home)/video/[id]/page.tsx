@@ -70,7 +70,7 @@ function VideoPageContent({ id }: { id: string }) {
 
   if (videoLoading) {
     return (
-      <div className="container mx-auto max-w-7xl px-0 py-0">
+      <div className="container mx-auto max-w-7xl px-0 py-0 animate-fade-in">
         <div className="flex flex-col gap-8 lg:flex-row">
           <div className="w-full lg:w-2/3">
             <Skeleton className="aspect-video w-full" />
@@ -105,7 +105,7 @@ function VideoPageContent({ id }: { id: string }) {
 
   if (!video) {
     return (
-      <div className="container mx-auto max-w-7xl px-4 py-8 text-center">
+      <div className="container mx-auto max-w-7xl px-4 py-8 text-center animate-fade-in">
         <h1 className="text-2xl font-bold">Video not found</h1>
         <p className="text-muted-foreground">This video may have been removed or is unavailable.</p>
       </div>
@@ -146,7 +146,7 @@ function VideoPageContent({ id }: { id: string }) {
 
 
   return (
-    <div className="container mx-auto max-w-7xl px-0 py-0">
+    <div className="container mx-auto max-w-7xl px-0 py-0 animate-fade-in">
       <div className="flex flex-col gap-8 lg:flex-row">
         <div className="w-full lg:w-2/3">
           <VideoPlayer video={currentVideo} />
@@ -173,21 +173,21 @@ function VideoPageContent({ id }: { id: string }) {
                 <Button variant="secondary"><Download className="mr-2 h-4 w-4" /> Download</Button>
               </div>
             </div>
-            <Card className="mt-6" data-ai-hint="content summarization">
+            <Card className="mt-6 animate-fade-in-up" data-ai-hint="content summarization">
               <CardContent className="p-4">
                 <p className="font-semibold">{currentVideo.views.toLocaleString()} views &bull; {formatDistanceToNow(new Date(currentVideo.uploadedAt), { addSuffix: true })}</p>
                 <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{summary || <Skeleton className="h-16 w-full" />}</p>
                 <p className="mt-2 text-sm">{currentVideo.description}</p>
               </CardContent>
             </Card>
-            <div className="mt-6" data-ai-hint="tag generation">
+            <div className="mt-6 animate-fade-in-up" data-ai-hint="tag generation" style={{ animationDelay: '200ms' }}>
                 <h3 className="text-lg font-bold mb-2">Tags</h3>
                 <div className="flex flex-wrap gap-2">
                     {tags.length > 0 ? tags.map((tag, i) => <Badge key={i} variant="secondary">{tag}</Badge>) : <Skeleton className="h-6 w-48"/>}
                 </div>
             </div>
             <Separator className="my-8" />
-            <div className="space-y-6" data-ai-hint="sentiment analysis">
+            <div className="space-y-6 animate-fade-in-up" data-ai-hint="sentiment analysis" style={{ animationDelay: '400ms' }}>
               <h2 className="text-2xl font-bold">Comments (1,345)</h2>
               <div className="flex gap-4">
                 <Avatar>
@@ -205,7 +205,7 @@ function VideoPageContent({ id }: { id: string }) {
             </div>
           </div>
         </div>
-        <div className="w-full space-y-4 lg:w-1/3" data-ai-hint="content recommendation engine">
+        <div className="w-full space-y-4 lg:w-1/3 animate-fade-in" data-ai-hint="content recommendation engine" style={{ animationDelay: '200ms' }}>
             <h2 className="text-xl font-headline font-bold">Up Next</h2>
           {recommendedLoading ? Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex gap-4">
@@ -215,8 +215,10 @@ function VideoPageContent({ id }: { id: string }) {
                   <Skeleton className="h-4 w-2/3" />
                 </div>
               </div>
-            )) : recommendedVideos?.map((recVideo) => (
-            <VideoCard key={recVideo.id} video={recVideo as Video} variant="horizontal" />
+            )) : recommendedVideos?.map((recVideo, index) => (
+            <div key={recVideo.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+              <VideoCard video={recVideo as Video} variant="horizontal" />
+            </div>
           ))}
         </div>
       </div>
