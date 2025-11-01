@@ -89,7 +89,7 @@ export default function AppSidebar() {
             </Button>
         </div>
         <Button variant="ghost" className="w-full justify-start mt-1" asChild>
-           <Link href="/"><LogOut className="mr-2 h-4 w-4" /> Logout</Link>
+           <Link href="/login"><LogOut className="mr-2 h-4 w-4" /> Logout</Link>
         </Button>
       </SidebarFooter>
     </Sidebar>

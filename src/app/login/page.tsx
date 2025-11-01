@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/icons/logo';
 
-export default function SignupPage() {
+export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto w-full max-w-sm">
@@ -19,17 +19,13 @@ export default function SignupPage() {
           <div className="mb-4 flex justify-center">
             <Logo />
           </div>
-          <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
+          <CardTitle className="font-headline text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Enter your information to get started
+            Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="full-name">Full Name</Label>
-              <Input id="full-name" placeholder="John Doe" required />
-            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -40,17 +36,28 @@ export default function SignupPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  href="#"
+                  className="ml-auto inline-block text-sm underline"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
               <Input id="password" type="password" required />
             </div>
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-                <Link href="/home" className="w-full">Create Account</Link>
+              <Link href="/home" className="w-full">Login</Link>
+            </Button>
+            <Button variant="outline" className="w-full">
+              Login with Google
             </Button>
           </div>
           <div className="mt-4 text-center text-sm">
-            Already have an account?{' '}
-            <Link href="/login" className="underline">
-              Log in
+            Don&apos;t have an account?{' '}
+            <Link href="/signup" className="underline">
+              Sign up
             </Link>
           </div>
         </CardContent>
