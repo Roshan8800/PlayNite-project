@@ -24,7 +24,7 @@ import {
 import { VideoPlayer } from '@/components/video-player';
 import { useDoc, useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, doc, query, where, limit, setDoc, serverTimestamp } from 'firebase/firestore';
-import { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -225,7 +225,8 @@ function VideoPageContent({ id }: { id: string }) {
 }
 
 
-export default function VideoPage({ params: { id } }: { params: { id: string } }) {
+export default function VideoPage({ params }: { params: { id: string } }) {
+  const { id } = React.use(params);
   return (
     <Suspense fallback={<p>Loading video...</p>}>
       <VideoPageContent id={id} />
