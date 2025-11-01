@@ -1,8 +1,62 @@
+'use client';
+
 import { VideoCard } from '@/components/video-card';
-import { videos } from '@/lib/data';
+import { useCollection, useFirestore, useUser } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Clock } from 'lucide-react';
 
 export default function WatchLaterPage() {
-  const watchLaterVideos = videos.slice(0, 5).sort(() => 0.5 - Math.random());
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const watchLaterCollectionRef = useMemo(
+    () => (user ? collection(firestore, 'users', user.uid, 'watchLater') : null),
+    [firestore, user]
+  );
+  
+  const { data: watchLaterVideos, loading, error } = useCollection(watchLaterCollectionRef);
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+         {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+               <Skeleton className="h-48 w-full" />
+               <Skeleton className="h-4 w-3/4" />
+               <Skeleton className="h-4 w-1/2" />
+           </div>
+         ))}
+       </div>
+     )
+   }
+
+   if (error) {
+     return <p className="text-destructive">Error: {error.message}</p>
+   }
+
+   if (watchLaterVideos?.length === 0) {
+     return (
+       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center h-[400px]">
+         <Clock className="mx-auto h-12 w-12 text-muted-foreground" />
+         <h3 className="mt-4 text-lg font-semibold">Your Watch Later List is Empty</h3>
+         <p className="mb-4 mt-2 text-sm text-muted-foreground">
+           Click the "Add to Watch Later" button on a video to save it here.
+         </p>
+       </div>
+     )
+   }
+
+   return (
+     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+       {watchLaterVideos?.map((video: any) => (
+         <VideoCard key={video.id} video={video} />
+       ))}
+     </div>
+   )
+  }
 
   return (
     <div className="space-y-8">
@@ -15,20 +69,7 @@ export default function WatchLaterPage() {
         </p>
       </header>
       
-      {watchLaterVideos.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {watchLaterVideos.map((video) => (
-            <VideoCard key={video.id} video={video} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-16">
-          <h2 className="text-2xl font-semibold">Your Watch Later List is Empty</h2>
-          <p className="text-muted-foreground mt-2">
-            Long press on a video to add it here.
-          </p>
-        </div>
-      )}
+      {renderContent()}
     </div>
   );
 }

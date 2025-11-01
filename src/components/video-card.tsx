@@ -5,8 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Video } from '@/lib/data';
-import { Clock, MoreVertical, PlayCircle, PlusCircle } from 'lucide-react';
+import type { Video } from '@/lib/types';
+import { Clock, MoreVertical, PlayCircle, PlusCircle, ThumbsUp, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from './ui/button';
+import { useFirestore, useUser } from '@/firebase';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { formatDistanceToNow } from 'date-fns';
+
 
 interface VideoCardProps {
   video: Video;
@@ -23,15 +27,53 @@ interface VideoCardProps {
 
 export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-  const handleWatchLater = (e: React.MouseEvent) => {
+  const handleInteraction = async (
+    e: React.MouseEvent,
+    collectionName: string,
+    successTitle: string,
+    successDescription: string
+  ) => {
     e.preventDefault();
     e.stopPropagation();
-    toast({
-      title: 'Added to Watch Later',
-      description: `"${video.title}" has been saved for later.`,
-    });
+
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Please log in',
+        description: 'You need to be logged in to perform this action.',
+      });
+      return;
+    }
+
+    try {
+      const docRef = doc(firestore, 'users', user.uid, collectionName, video.id);
+      await setDoc(docRef, { ...video, addedAt: new Date().toISOString() });
+      toast({
+        title: successTitle,
+        description: successDescription,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'An error occurred',
+        description: `Could not add "${video.title}" to your list.`,
+      });
+    }
   };
+
+  const handleWatchLater = (e: React.MouseEvent) => {
+    handleInteraction(e, 'watchLater', 'Added to Watch Later', `"${video.title}" has been saved for later.`);
+  };
+
+  const handleLike = (e: React.MouseEvent) => {
+    handleInteraction(e, 'likes', 'Video Liked', `You liked "${video.title}".`);
+  };
+
+  const uploadedAtDistance = formatDistanceToNow(new Date(video.uploadedAt), { addSuffix: true });
+
 
   if (variant === 'horizontal') {
     return (
@@ -52,7 +94,7 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
           <div className="flex-grow p-3 flex flex-col">
             <h3 className="font-semibold leading-tight line-clamp-2">{video.title}</h3>
             <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{video.channel}</p>
-            <p className="text-sm text-muted-foreground mt-1">{video.views} &bull; {video.uploadedAt}</p>
+            <p className="text-sm text-muted-foreground mt-1">{video.views} &bull; {uploadedAtDistance}</p>
           </div>
           <div className="p-2">
              <DropdownMenu>
@@ -63,8 +105,12 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={handleWatchLater}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <Clock className="mr-2 h-4 w-4" />
                   <span>Add to Watch Later</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLike}>
+                  <ThumbsUp className="mr-2 h-4 w-4" />
+                  <span>Like Video</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -104,7 +150,7 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
                 {video.title}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">{video.channel}</p>
-              <p className="text-sm text-muted-foreground">{video.views} &bull; {video.uploadedAt}</p>
+              <p className="text-sm text-muted-foreground">{video.views} &bull; {uploadedAtDistance}</p>
             </div>
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -114,8 +160,12 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={handleWatchLater}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <Clock className="mr-2 h-4 w-4" />
                   <span>Add to Watch Later</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLike}>
+                  <ThumbsUp className="mr-2 h-4 w-4" />
+                  <span>Like Video</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

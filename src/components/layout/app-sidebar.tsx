@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Clock,
   Download,
@@ -28,7 +28,9 @@ import {
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
-import { users } from '@/lib/data';
+import { useAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { Skeleton } from '../ui/skeleton';
 
 const menuItems = [
   { href: '/home', label: 'Home', icon: Home },
@@ -41,7 +43,64 @@ const menuItems = [
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const user = users[0];
+  const { user, loading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
+  
+  const renderUserArea = () => {
+    if (loading) {
+      return (
+         <div className="flex items-center gap-3 p-2">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="flex-grow space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+        </div>
+      )
+    }
+
+    if (!user) {
+      return (
+        <div className="p-2">
+          <Button className="w-full" asChild>
+            <Link href="/login">Log In / Sign Up</Link>
+          </Button>
+        </div>
+      )
+    }
+
+    return (
+      <>
+        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted">
+            <Avatar>
+              <AvatarImage src={user.avatarUrl!} alt={user.name!} data-ai-hint="person portrait" />
+              <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-grow">
+              <p className="font-semibold">{user.name}</p>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+            </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+             <Button variant="outline" size="sm" asChild>
+                <Link href="/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+                <Link href="/settings"><Settings className="mr-2 h-4 w-4" /> Settings</Link>
+            </Button>
+        </div>
+        <Button variant="ghost" className="w-full justify-start mt-1" onClick={handleLogout}>
+           <LogOut className="mr-2 h-4 w-4" /> Logout
+        </Button>
+      </>
+    )
+  }
 
   return (
     <Sidebar side="right" collapsible="offcanvas" className="border-l">
@@ -70,27 +129,7 @@ export default function AppSidebar() {
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted">
-            <Avatar>
-              <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="person portrait" />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-grow">
-              <p className="font-semibold">{user.name}</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2 mt-2">
-             <Button variant="outline" size="sm" asChild>
-                <Link href="/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-                <Link href="/settings"><Settings className="mr-2 h-4 w-4" /> Settings</Link>
-            </Button>
-        </div>
-        <Button variant="ghost" className="w-full justify-start mt-1" asChild>
-           <Link href="/login"><LogOut className="mr-2 h-4 w-4" /> Logout</Link>
-        </Button>
+       {renderUserArea()}
       </SidebarFooter>
     </Sidebar>
   );
