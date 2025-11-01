@@ -29,6 +29,7 @@ import {
 import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
 import { users } from '@/lib/data';
+import { SheetTitle, SheetDescription } from '../ui/sheet';
 
 const menuItems = [
   { href: '/home', label: 'Home', icon: Home },
@@ -45,6 +46,8 @@ export default function AppSidebar() {
 
   return (
     <Sidebar side="right" collapsible="offcanvas" className="border-l">
+      <SheetTitle className="sr-only">Main Navigation</SheetTitle>
+      <SheetDescription className="sr-only">A list of main navigation links and user actions.</SheetDescription>
       <SidebarHeader>
         <Logo />
       </SidebarHeader>
