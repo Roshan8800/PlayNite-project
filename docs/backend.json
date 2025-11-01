@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID from Firebase Auth"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the user's profile picture"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["Admin", "User"],
+          "description": "The user's role"
+        },
+        "joinedDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date the user joined"
+        }
+      },
+      "required": ["uid", "name", "email", "role", "joinedDate"]
+    },
+    "video": {
+      "title": "Video",
+      "description": "A video in the streaming platform",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "channel": {
+          "type": "string"
+        },
+        "views": {
+          "type": "string"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "duration": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "channelAvatarUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "videoUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the video"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+            "type": "string",
+            "enum": ["Pending", "Approved", "Rejected"],
+            "description": "Approval status of the video"
+        }
+      },
+      "required": ["title", "channel", "uploadedAt", "thumbnailUrl", "videoUrl", "status"]
+    },
+    "category": {
+        "title": "Category",
+        "description": "A video category",
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "thumbnailUrl": {
+                "type": "string",
+                "format": "uri"
+            }
+        },
+        "required": ["name", "thumbnailUrl"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com", "password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/user"
+      },
+      "description": "Stores public profiles for users."
+    },
+    "/videos/{videoId}": {
+        "schema": {
+            "$ref": "#/entities/video"
+        },
+        "description": "Stores all video documents."
+    },
+    "/categories/{categoryId}": {
+        "schema": {
+            "$ref": "#/entities/category"
+        },
+        "description": "Stores video categories."
+    },
+    "/users/{userId}/history/{videoId}": {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "watchedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "description": "User's viewing history."
+    },
+    "/users/{userId}/likes/{videoId}": {
+        "schema": {
+             "type": "object",
+            "properties": {
+                "likedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "description": "User's liked videos."
+    },
+    "/users/{userId}/watchLater/{videoId}": {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "savedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "description": "User's watch later list."
+    }
+  }
+}
