@@ -26,7 +26,6 @@ import {
   SidebarMenuButton,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
 import { users } from '@/lib/data';
@@ -46,10 +45,6 @@ export default function AppSidebar() {
 
   return (
     <Sidebar side="right" collapsible="offcanvas" className="border-l">
-      <SheetTitle className="sr-only">App Menu</SheetTitle>
-      <SheetDescription className="sr-only">
-        Navigate the main sections of the application.
-      </SheetDescription>
       <SidebarHeader>
         <Logo />
       </SidebarHeader>

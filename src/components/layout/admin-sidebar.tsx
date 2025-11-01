@@ -22,7 +22,6 @@ import {
   SidebarTrigger,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Logo } from '@/components/icons/logo';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
@@ -42,10 +41,6 @@ export default function AdminSidebar() {
 
   return (
     <Sidebar side="left" collapsible="icon" variant="sidebar" className="border-r">
-      <SheetTitle className="sr-only">Admin Menu</SheetTitle>
-      <SheetDescription className="sr-only">
-        Navigate the admin sections of the application.
-      </SheetDescription>
       <SidebarHeader className="flex items-center justify-between p-2">
         <div className="group-data-[collapsible=icon]:hidden">
           <Logo />
