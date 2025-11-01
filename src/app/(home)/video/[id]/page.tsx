@@ -23,12 +23,14 @@ import {
 } from 'lucide-react';
 import { VideoPlayer } from '@/components/video-player';
 import { useDoc, useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, query, where, limit, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, query, where, limit, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState, Suspense } from 'react';
 import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 function VideoPageContent({ id }: { id: string }) {
   const firestore = useFirestore();
@@ -46,27 +48,43 @@ function VideoPageContent({ id }: { id: string }) {
   );
   const { data: recommendedVideos, loading: recommendedLoading } = useCollection(recommendedVideosQuery);
 
-  const [summary, setSummary] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-
   useEffect(() => {
     if (video) {
-      // Add to history
       if (user) {
         const historyRef = doc(firestore, 'users', user.uid, 'history', video.id);
-        setDoc(historyRef, { ...video, watchedAt: serverTimestamp() });
+        const historyData = { ...video, watchedAt: serverTimestamp() };
+        setDoc(historyRef, historyData, { merge: true }).catch(e => {
+            const permissionError = new FirestorePermissionError({
+                path: historyRef.path,
+                operation: 'update',
+                requestResourceData: historyData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+      }
+
+      // Fetch AI content only if not already present
+      if (!video.summary) {
+        summarizeContent({ videoTitle: video.title, videoDescription: video.description })
+          .then(res => {
+            updateDoc(videoRef, { summary: res.summary });
+          }).catch(() => {
+            // Do not show error to user, just fail silently
+            console.error("AI summary generation failed.");
+          });
       }
       
-      // Fetch AI content
-      summarizeContent({ videoTitle: video.title, videoDescription: video.description })
-        .then(res => setSummary(res.summary))
-        .catch(() => setSummary("AI summary is currently unavailable."));
-      
-      generateTags({ videoTitle: video.title, videoDescription: video.description })
-        .then(res => setTags(res.tags))
-        .catch(() => setTags(["AI", "Tags", "Unavailable"]));
+      if (!video.tags || video.tags.length === 0) {
+        generateTags({ videoTitle: video.title, videoDescription: video.description })
+          .then(res => {
+             updateDoc(videoRef, { tags: res.tags });
+          }).catch(() => {
+            // Do not show error to user, just fail silently
+            console.error("AI tag generation failed.");
+          });
+      }
     }
-  }, [video, firestore, user]);
+  }, [video, firestore, user, videoRef]);
 
   if (videoLoading) {
     return (
@@ -114,7 +132,7 @@ function VideoPageContent({ id }: { id: string }) {
   
   const currentVideo = video as Video;
 
-  const handleInteraction = async (
+  const handleInteraction = (
     collectionName: string,
     successTitle: string,
     successDescription: string
@@ -128,20 +146,28 @@ function VideoPageContent({ id }: { id: string }) {
       return;
     }
 
-    try {
-      const docRef = doc(firestore, 'users', user.uid, collectionName, video.id);
-      await setDoc(docRef, { ...video, addedAt: new Date().toISOString() });
-      toast({
-        title: successTitle,
-        description: successDescription,
+    const docRef = doc(firestore, 'users', user.uid, collectionName, video.id);
+    const interactionData = { ...video, addedAt: new Date().toISOString() };
+    setDoc(docRef, interactionData, { merge: true })
+      .then(() => {
+        toast({
+          title: successTitle,
+          description: successDescription,
+        });
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'create',
+          requestResourceData: interactionData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'An error occurred',
+          description: `Could not complete the action.`,
+        });
       });
-    } catch (error) {
-       toast({
-        variant: 'destructive',
-        title: 'An error occurred',
-        description: `Could not complete the action.`,
-      });
-    }
   };
 
 
@@ -163,27 +189,27 @@ function VideoPageContent({ id }: { id: string }) {
                   <p className="text-sm text-muted-foreground">2.3M subscribers</p>
                 </div>
               </div>
-              <Button variant="outline" className="flex-shrink-0">
+              <Button variant="outline" className="flex-shrink-0" aria-label="Subscribe to channel">
                 <Bell className="mr-2 h-4 w-4" /> Subscribed
               </Button>
               <div className="ml-auto flex items-center gap-2">
-                <Button variant="secondary" onClick={() => handleInteraction('likes', 'Video Liked', `You liked "${currentVideo.title}".`)}><ThumbsUp className="mr-2 h-4 w-4" /> {Math.floor(Math.random() * 1000)}K</Button>
-                <Button variant="secondary"><ThumbsDown className="h-4 w-4" /></Button>
-                <Button variant="secondary"><Share2 className="mr-2 h-4 w-4" /> Share</Button>
-                <Button variant="secondary"><Download className="mr-2 h-4 w-4" /> Download</Button>
+                <Button variant="secondary" onClick={() => handleInteraction('likes', 'Video Liked', `You liked "${currentVideo.title}".`)} aria-label="Like video"><ThumbsUp className="mr-2 h-4 w-4" /> {Math.floor(Math.random() * 1000)}K</Button>
+                <Button variant="secondary" aria-label="Dislike video"><ThumbsDown className="h-4 w-4" /></Button>
+                <Button variant="secondary" aria-label="Share video"><Share2 className="mr-2 h-4 w-4" /> Share</Button>
+                <Button variant="secondary" aria-label="Download video"><Download className="mr-2 h-4 w-4" /> Download</Button>
               </div>
             </div>
             <Card className="mt-6 animate-fade-in-up" data-ai-hint="content summarization">
               <CardContent className="p-4">
                 <p className="font-semibold">{currentVideo.views.toLocaleString()} views &bull; {formatDistanceToNow(new Date(currentVideo.uploadedAt), { addSuffix: true })}</p>
-                <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{summary || <Skeleton className="h-16 w-full" />}</p>
+                <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{currentVideo.summary || <Skeleton className="h-16 w-full" />}</p>
                 <p className="mt-2 text-sm">{currentVideo.description}</p>
               </CardContent>
             </Card>
             <div className="mt-6 animate-fade-in-up" data-ai-hint="tag generation" style={{ animationDelay: '200ms' }}>
                 <h3 className="text-lg font-bold mb-2">Tags</h3>
                 <div className="flex flex-wrap gap-2">
-                    {tags.length > 0 ? tags.map((tag, i) => <Badge key={i} variant="secondary">{tag}</Badge>) : <Skeleton className="h-6 w-48"/>}
+                    {currentVideo.tags && currentVideo.tags.length > 0 ? currentVideo.tags.map((tag, i) => <Badge key={i} variant="secondary">{tag}</Badge>) : <Skeleton className="h-6 w-48"/>}
                 </div>
             </div>
             <Separator className="my-8" />
@@ -195,7 +221,7 @@ function VideoPageContent({ id }: { id: string }) {
                     <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-grow">
-                  <Input placeholder="Add a comment..." />
+                  <Input placeholder="Add a comment..." aria-label="Add a public comment"/>
                    <div className="mt-2 flex justify-end">
                      <Button>Comment</Button>
                    </div>

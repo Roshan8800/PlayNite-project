@@ -40,6 +40,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { type Category } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters.'),
@@ -57,39 +59,54 @@ export default function AdminCategoriesPage() {
     defaultValues: { name: '', thumbnailUrl: '' },
   });
 
-  const handleAddCategory = async (values: z.infer<typeof categorySchema>) => {
-    try {
-      await addDoc(categoriesRef, {
-        ...values,
-        createdAt: serverTimestamp(),
+  const handleAddCategory = (values: z.infer<typeof categorySchema>) => {
+    const newCategoryData = {
+      ...values,
+      createdAt: serverTimestamp(),
+    };
+    addDoc(categoriesRef, newCategoryData)
+      .then(() => {
+        toast({ title: 'Category Added', description: `"${values.name}" has been created.` });
+        form.reset();
+      })
+      .catch((e) => {
+        const permissionError = new FirestorePermissionError({
+          path: categoriesRef.path,
+          operation: 'create',
+          requestResourceData: newCategoryData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Error adding category',
+          description: e.message,
+        });
       });
-      toast({ title: 'Category Added', description: `"${values.name}" has been created.` });
-      form.reset();
-    } catch (e: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error adding category',
-        description: e.message,
-      });
-    }
   };
 
-  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+  const handleDeleteCategory = (categoryId: string, categoryName: string) => {
     if (!window.confirm(`Are you sure you want to delete the "${categoryName}" category?`)) return;
-    try {
-      await deleteDoc(doc(firestore, 'categories', categoryId));
-      toast({ title: 'Category Deleted', description: `"${categoryName}" has been removed.` });
-    } catch (e: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error deleting category',
-        description: e.message,
+    const docRef = doc(firestore, 'categories', categoryId);
+    deleteDoc(docRef)
+      .then(() => {
+        toast({ title: 'Category Deleted', description: `"${categoryName}" has been removed.` });
+      })
+      .catch((e) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Error deleting category',
+          description: e.message,
+        });
       });
-    }
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-headline font-bold tracking-tight">
@@ -134,7 +151,7 @@ export default function AdminCategoriesPage() {
                         </TableRow>
                       ))
                     : categories?.map((category) => (
-                        <TableRow key={category.id}>
+                        <TableRow key={category.id} className="transition-colors hover:bg-muted/50">
                           <TableCell className="font-medium">
                             {(category as Category).name}
                           </TableCell>

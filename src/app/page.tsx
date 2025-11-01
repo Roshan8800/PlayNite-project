@@ -3,6 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import { Logo } from '@/components/icons/logo';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Welcome to PlayNite',
+  description: 'Your new home for incredible video content. Sign up or start watching as a guest.',
+};
+
 
 export default function WelcomePage() {
   return (
@@ -19,7 +26,7 @@ export default function WelcomePage() {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center text-center p-4">
+      <main className="flex-1 flex flex-col items-center justify-center text-center p-4 animate-fade-in">
         <h1 className="text-5xl font-headline font-bold tracking-tight">
           Welcome to PlayNite
         </h1>

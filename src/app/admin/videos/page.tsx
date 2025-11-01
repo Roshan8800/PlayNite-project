@@ -33,6 +33,8 @@ import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function AdminVideosPage() {
   const firestore = useFirestore();
@@ -40,14 +42,21 @@ export default function AdminVideosPage() {
   const videosRef = collection(firestore, 'videos');
   const { data: videos, loading, error } = useCollection(videosRef);
 
-  const handleDelete = async (videoId: string, videoTitle: string) => {
+  const handleDelete = (videoId: string, videoTitle: string) => {
     if (!window.confirm(`Are you sure you want to delete "${videoTitle}"?`)) return;
-    try {
-      await deleteDoc(doc(firestore, 'videos', videoId));
-      toast({ title: 'Video Deleted', description: `"${videoTitle}" has been removed.` });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
-    }
+    const docRef = doc(firestore, 'videos', videoId);
+    deleteDoc(docRef)
+      .then(() => {
+        toast({ title: 'Video Deleted', description: `"${videoTitle}" has been removed.` });
+      })
+      .catch((e) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+      });
   };
 
   const renderLoading = () => (
@@ -68,7 +77,7 @@ export default function AdminVideosPage() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-headline font-bold tracking-tight">
@@ -128,7 +137,7 @@ export default function AdminVideosPage() {
                 )}
                 {videos && videos.length > 0 ? (
                   videos.map((video) => (
-                    <TableRow key={video.id}>
+                    <TableRow key={video.id} className="transition-colors hover:bg-muted/50">
                       <TableCell className="hidden sm:table-cell">
                         <Image
                           alt={(video as Video).title}

@@ -14,6 +14,7 @@ export type Video = {
   category: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   tags?: string[];
+  summary?: string;
   addedAt?: string;
 };
 

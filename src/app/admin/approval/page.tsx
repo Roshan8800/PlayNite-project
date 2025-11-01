@@ -25,6 +25,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { type Video } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function AdminApprovalPage() {
   const firestore = useFirestore();
@@ -37,25 +39,31 @@ export default function AdminApprovalPage() {
     error,
   } = useCollection(pendingVideosQuery);
 
-  const handleUpdateStatus = async (
+  const handleUpdateStatus = (
     videoId: string,
     newStatus: 'Approved' | 'Rejected'
   ) => {
-    try {
-      const videoDoc = doc(firestore, 'videos', videoId);
-      await updateDoc(videoDoc, { status: newStatus });
-      toast({
-        title: `Video ${newStatus}`,
-        description: `The video has been successfully ${newStatus.toLowerCase()}.`,
+    const videoDoc = doc(firestore, 'videos', videoId);
+    updateDoc(videoDoc, { status: newStatus })
+      .then(() => {
+        toast({
+          title: `Video ${newStatus}`,
+          description: `The video has been successfully ${newStatus.toLowerCase()}.`,
+        });
+      })
+      .catch((e) => {
+        const permissionError = new FirestorePermissionError({
+          path: videoDoc.path,
+          operation: 'update',
+          requestResourceData: { status: newStatus },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Error updating status',
+          description: e.message || 'Could not update the video status.',
+        });
       });
-    } catch (e: any) {
-      console.error(e);
-      toast({
-        variant: 'destructive',
-        title: 'Error updating status',
-        description: e.message || 'Could not update the video status.',
-      });
-    }
   };
 
   const renderLoading = () => (
@@ -89,7 +97,7 @@ export default function AdminApprovalPage() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <header>
         <h1 className="text-4xl font-headline font-bold tracking-tight">
           Approval Queue
@@ -135,7 +143,7 @@ export default function AdminApprovalPage() {
                 )}
                 {pendingVideos && pendingVideos.length > 0 ? (
                   pendingVideos.map((video) => (
-                    <TableRow key={video.id}>
+                    <TableRow key={video.id} className="transition-colors hover:bg-muted/50">
                       <TableCell className="hidden sm:table-cell">
                         <Image
                           alt={(video as Video).title}
@@ -163,6 +171,7 @@ export default function AdminApprovalPage() {
                             variant="outline"
                             size="icon"
                             onClick={() => handleUpdateStatus(video.id, 'Approved')}
+                            aria-label={`Approve video ${(video as Video).title}`}
                           >
                             <Check className="h-4 w-4" />
                           </Button>
@@ -170,6 +179,7 @@ export default function AdminApprovalPage() {
                             variant="destructive"
                             size="icon"
                             onClick={() => handleUpdateStatus(video.id, 'Rejected')}
+                            aria-label={`Reject video ${(video as Video).title}`}
                           >
                             <X className="h-4 w-4" />
                           </Button>

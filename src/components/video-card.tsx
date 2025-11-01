@@ -17,6 +17,9 @@ import { Button } from './ui/button';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+
 
 interface VideoCardProps {
   video: Video;
@@ -28,7 +31,7 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const handleInteraction = async (
+  const handleInteraction = (
     e: React.MouseEvent,
     collectionName: string,
     successTitle: string,
@@ -46,26 +49,29 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
       return;
     }
 
-    try {
-      const docRef = doc(
-        firestore,
-        'users',
-        user.uid,
-        collectionName,
-        video.id
-      );
-      await setDoc(docRef, { ...video, addedAt: new Date().toISOString() });
-      toast({
-        title: successTitle,
-        description: successDescription,
+    const docRef = doc(firestore, 'users', user.uid, collectionName, video.id);
+    const interactionData = { ...video, addedAt: new Date().toISOString() };
+
+    setDoc(docRef, interactionData, { merge: true })
+      .then(() => {
+        toast({
+          title: successTitle,
+          description: successDescription,
+        });
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'create',
+          requestResourceData: interactionData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'An error occurred',
+          description: `Could not add "${video.title}" to your list.`,
+        });
       });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'An error occurred',
-        description: `Could not add "${video.title}" to your list.`,
-      });
-    }
   };
 
   const handleWatchLater = (e: React.MouseEvent) => {
@@ -197,6 +203,7 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
+                  aria-label={`More options for ${video.title}`}
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>

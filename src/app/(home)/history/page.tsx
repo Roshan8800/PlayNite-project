@@ -8,6 +8,8 @@ import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { History as HistoryIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function HistoryPage() {
   const { user } = useUser();
@@ -39,7 +41,9 @@ export default function HistoryPage() {
         title: 'History Cleared',
         description: 'Your viewing history has been successfully cleared.',
       });
-    } catch (e) {
+    } catch (e: any) {
+      // This is a complex operation, so we'll just log a generic error
+      // A more specific permission error would be hard to construct here.
       console.error(e);
       toast({
         variant: 'destructive',
@@ -68,7 +72,7 @@ export default function HistoryPage() {
       return <p className="text-destructive">Error loading history: {error.message}</p>
     }
 
-    if (history?.length === 0) {
+    if (!history || history.length === 0) {
       return (
          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center h-[400px] animate-fade-in">
           <HistoryIcon className="mx-auto h-12 w-12 text-muted-foreground" />

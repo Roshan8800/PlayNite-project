@@ -1,6 +1,13 @@
 import AppSidebar from '@/components/layout/app-sidebar';
 import Header from '@/components/layout/header';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'PlayNite Home',
+  description: 'Explore a vast library of videos, from educational content to entertainment.',
+};
+
 
 export default function HomeLayout({
   children,
