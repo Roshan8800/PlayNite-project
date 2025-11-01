@@ -13,6 +13,7 @@ export type Video = {
   category: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   tags?: string[];
+  addedAt?: string;
 };
 
 export type Category = {
@@ -29,4 +30,5 @@ export type User = {
   avatarUrl: string | null;
   role: 'Admin' | 'User';
   joinedDate: string;
+  status?: 'Active' | 'Inactive';
 };
