@@ -225,10 +225,10 @@ function VideoPageContent({ id }: { id: string }) {
 }
 
 
-export default function VideoPage({ params }: { params: { id: string } }) {
+export default function VideoPage({ params: { id } }: { params: { id: string } }) {
   return (
     <Suspense fallback={<p>Loading video...</p>}>
-      <VideoPageContent id={params.id} />
+      <VideoPageContent id={id} />
     </Suspense>
   )
 }
