@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseApp } from 'firebase/app';
+import { getPerformance } from 'firebase/performance';
 export * from './provider';
 export * from './auth/use-user';
 export * from './firestore/use-collection';
@@ -22,6 +23,9 @@ export type FirebaseInstances = {
 export function initializeFirebase(): FirebaseInstances {
   const auth = getAuth(app);
   const firestore = getFirestore(app);
+  if (typeof window !== 'undefined') {
+    getPerformance(app);
+  }
   return { firebaseApp: app, auth, firestore };
 }
 
