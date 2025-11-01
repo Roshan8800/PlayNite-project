@@ -25,16 +25,33 @@
         },
         "role": {
           "type": "string",
-          "enum": ["Admin", "User"],
+          "enum": [
+            "Admin",
+            "User"
+          ],
           "description": "The user's role"
         },
         "joinedDate": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date the user joined"
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the user joined"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Active",
+            "Inactive"
+          ],
+          "description": "The user's account status"
         }
       },
-      "required": ["uid", "name", "email", "role", "joinedDate"]
+      "required": [
+        "uid",
+        "name",
+        "email",
+        "role",
+        "joinedDate"
+      ]
     },
     "video": {
       "title": "Video",
@@ -47,8 +64,12 @@
         "channel": {
           "type": "string"
         },
+        "channelId": {
+          "type": "string",
+          "description": "The UID of the user who uploaded the video."
+        },
         "views": {
-          "type": "string"
+          "type": "number"
         },
         "uploadedAt": {
           "type": "string",
@@ -83,31 +104,90 @@
           }
         },
         "status": {
-            "type": "string",
-            "enum": ["Pending", "Approved", "Rejected"],
-            "description": "Approval status of the video"
+          "type": "string",
+          "enum": [
+            "Pending",
+            "Approved",
+            "Rejected"
+          ],
+          "description": "Approval status of the video"
         }
       },
-      "required": ["title", "channel", "uploadedAt", "thumbnailUrl", "videoUrl", "status"]
+      "required": [
+        "title",
+        "channel",
+        "channelId",
+        "uploadedAt",
+        "thumbnailUrl",
+        "videoUrl",
+        "status",
+        "views"
+      ]
     },
     "category": {
-        "title": "Category",
-        "description": "A video category",
-        "type": "object",
-        "properties": {
-            "name": {
-                "type": "string"
-            },
-            "thumbnailUrl": {
-                "type": "string",
-                "format": "uri"
-            }
+      "title": "Category",
+      "description": "A video category",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
         },
-        "required": ["name", "thumbnailUrl"]
+        "thumbnailUrl": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "name",
+        "thumbnailUrl"
+      ]
+    },
+    "report": {
+      "title": "Report",
+      "description": "A user-submitted report against a video.",
+      "type": "object",
+      "properties": {
+        "videoId": {
+          "type": "string"
+        },
+        "videoTitle": {
+          "type": "string"
+        },
+        "reportedByUid": {
+          "type": "string"
+        },
+        "reportedByName": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Open",
+            "Resolved"
+          ]
+        },
+        "reportedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "videoId",
+        "reportedByUid",
+        "reason",
+        "status",
+        "reportedAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["google.com", "password"]
+    "providers": [
+      "google.com",
+      "password"
+    ]
   },
   "firestore": {
     "/users/{userId}": {
@@ -117,52 +197,40 @@
       "description": "Stores public profiles for users."
     },
     "/videos/{videoId}": {
-        "schema": {
-            "$ref": "#/entities/video"
-        },
-        "description": "Stores all video documents."
+      "schema": {
+        "$ref": "#/entities/video"
+      },
+      "description": "Stores all video documents."
     },
     "/categories/{categoryId}": {
-        "schema": {
-            "$ref": "#/entities/category"
-        },
-        "description": "Stores video categories."
+      "schema": {
+        "$ref": "#/entities/category"
+      },
+      "description": "Stores video categories."
+    },
+    "/reports/{reportId}": {
+      "schema": {
+        "$ref": "#/entities/report"
+      },
+      "description": "Stores user-submitted content reports."
     },
     "/users/{userId}/history/{videoId}": {
-        "schema": {
-            "type": "object",
-            "properties": {
-                "watchedAt": {
-                    "type": "string",
-                    "format": "date-time"
-                }
-            }
-        },
-        "description": "User's viewing history."
+      "schema": {
+        "$ref": "#/entities/video"
+      },
+      "description": "User's viewing history."
     },
     "/users/{userId}/likes/{videoId}": {
-        "schema": {
-             "type": "object",
-            "properties": {
-                "likedAt": {
-                    "type": "string",
-                    "format": "date-time"
-                }
-            }
-        },
-        "description": "User's liked videos."
+      "schema": {
+        "$ref": "#/entities/video"
+      },
+      "description": "User's liked videos."
     },
     "/users/{userId}/watchLater/{videoId}": {
-        "schema": {
-            "type": "object",
-            "properties": {
-                "savedAt": {
-                    "type": "string",
-                    "format": "date-time"
-                }
-            }
-        },
-        "description": "User's watch later list."
+      "schema": {
+        "$ref": "#/entities/video"
+      },
+      "description": "User's watch later list."
     }
   }
 }

@@ -2,7 +2,8 @@ export type Video = {
   id: string;
   title: string;
   channel: string;
-  views: string;
+  channelId: string;
+  views: number;
   uploadedAt: string;
   thumbnailUrl: string;
   thumbnailHint?: string;

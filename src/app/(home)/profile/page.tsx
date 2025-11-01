@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,40 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { VideoCard } from "@/components/video-card";
-import { videos } from "@/lib/data";
-import { Mail, Phone, User as UserIcon, Video } from "lucide-react";
+import { Mail, User as UserIcon, Video } from "lucide-react";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { type Video as VideoType } from "@/lib/types";
 
 
 export default function ProfilePage() {
     const { user, loading: userLoading } = useUser();
     const firestore = useFirestore();
-    const [userVideos, setUserVideos] = useState<VideoType[]>([]);
-    const [videosLoading, setVideosLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchUserVideos = async () => {
-            if (!user) return;
-            setVideosLoading(true);
-            
-            // This is a placeholder for fetching user-specific videos.
-            // In a real app, you would have a query like `where('channel', '==', user.name)`
-            // or a `userId` field on the video document.
-            // For now, we'll just show some videos as an example.
-            const videosQuery = query(collection(firestore, "videos"));
-            const snapshot = await getDocs(videosQuery);
-            const allVideos = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as VideoType[];
-            setUserVideos(allVideos.slice(0, 4));
-
-            setVideosLoading(false);
-        };
-        fetchUserVideos();
-
+    const videosQuery = useMemo(() => {
+      if (!user) return null;
+      return query(collection(firestore, 'videos'), where('channelId', '==', user.uid));
     }, [user, firestore]);
+
+    const { data: userVideos, loading: videosLoading } = useCollection(videosQuery);
+
 
     if (userLoading) {
         return (
@@ -88,7 +72,7 @@ export default function ProfilePage() {
                         <h1 className="text-3xl font-headline font-bold">{user.name}</h1>
                         <p className="text-muted-foreground">{user.email}</p>
                         <div className="flex justify-center md:justify-start gap-4 mt-2 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1.5"><Video className="w-4 h-4"/> {userVideos.length} videos</span>
+                            <span className="flex items-center gap-1.5"><Video className="w-4 h-4"/> {userVideos?.length ?? 0} videos</span>
                             <span className="flex items-center gap-1.5"><UserIcon className="w-4 h-4"/> 1.2k Subscribers</span>
                         </div>
                     </div>
@@ -107,12 +91,14 @@ export default function ProfilePage() {
                         </div>
                     ))}
                 </div>
-            ) : (
+            ) : userVideos && userVideos.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {userVideos.map(video => (
-                        <VideoCard key={video.id} video={video} />
+                        <VideoCard key={video.id} video={video as VideoType} />
                     ))}
                 </div>
+            ) : (
+                <p className="text-muted-foreground">You have not uploaded any videos yet.</p>
             )}
 
 
@@ -131,14 +117,14 @@ export default function ProfilePage() {
                             <span>{user.email}</span>
                         </div>
                         <div className="flex items-center">
-                            <Phone className="w-4 h-4 mr-3 text-muted-foreground"/>
-                            <span className="font-semibold mr-2">Phone:</span>
-                            <span>(Not set)</span>
-                        </div>
-                        <div className="flex items-center">
                             <UserIcon className="w-4 h-4 mr-3 text-muted-foreground"/>
                             <span className="font-semibold mr-2">Member Since:</span>
                             <span>{new Date(user.joinedDate).toLocaleDateString()}</span>
+                        </div>
+                         <div className="flex items-center">
+                            <UserIcon className="w-4 h-4 mr-3 text-muted-foreground"/>
+                            <span className="font-semibold mr-2">Role:</span>
+                            <span>{user.role}</span>
                         </div>
                     </CardContent>
                  </Card>
