@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { VideoCard } from '@/components/video-card';
 import { videos, videoPlayerImage } from '@/lib/data';
-import { summarizeContent, generateTags } from '@/ai/flows/content-summarization'; // Mock usage
+import { summarizeContent } from '@/ai/flows/content-summarization';
+import { generateTags } from '@/ai/flows/ai-tag-generation';
 import {
   Bell,
   Download,
@@ -25,6 +26,7 @@ import {
   ThumbsUp,
   Volume2,
   VolumeX,
+  Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 
