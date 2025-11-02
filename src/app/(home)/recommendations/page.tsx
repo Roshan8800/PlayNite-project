@@ -130,8 +130,8 @@ export default function RecommendationsPage() {
         );
         const collaborativeSnapshot = await getDocs(collaborativeQuery);
         const collaborativeVideos = collaborativeSnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() })) as Video[]
-          .filter(video => !likedIds.includes(video.id));
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter((video: any) => !likedIds.includes(video.id)) as Video[];
 
         setRecommendations(prev => ({ ...prev, collaborative: collaborativeVideos }));
       }
