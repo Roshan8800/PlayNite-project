@@ -43,11 +43,13 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Metadata } from 'next';
 import Head from 'next/head';
+import { useRouter } from 'next/navigation';
 
 function WatchPageContent({ id }: { id: string }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
   const [userRating, setUserRating] = useState<'like' | 'dislike' | null>(null);
   const [commentText, setCommentText] = useState('');
 
@@ -68,8 +70,25 @@ function WatchPageContent({ id }: { id: string }) {
   useEffect(() => {
     if (video) {
       if (user) {
+        // Check parental controls before allowing access
+        const videoAgeRestriction = video.ageRestriction || 18;
+        if (user.parentalControlsEnabled && user.ageRestriction && user.ageRestriction < videoAgeRestriction) {
+          toast({
+            variant: 'destructive',
+            title: 'Content restricted',
+            description: 'This content is not available with your current parental control settings.',
+          });
+          router.push('/home');
+          return;
+        }
+
         const historyRef = doc(firestore, 'users', user.uid, 'history', video.id);
-        const historyData = { ...video, watchedAt: serverTimestamp() };
+        const historyData = {
+          ...video,
+          watchedAt: serverTimestamp(),
+          watchProgress: 0,
+          completed: false
+        };
         setDoc(historyRef, historyData, { merge: true }).catch(e => {
             const permissionError = new FirestorePermissionError({
                 path: historyRef.path,
@@ -98,7 +117,14 @@ function WatchPageContent({ id }: { id: string }) {
                 const recommended = docs
                   .filter(doc => doc.exists())
                   .map(doc => ({ id: doc.id, ...doc.data() } as Video))
-                  .filter(v => v.id !== id && v.status === 'Approved');
+                  .filter(v => {
+                    // Apply parental controls to recommendations
+                    if (user.parentalControlsEnabled && user.ageRestriction) {
+                      const recAgeRestriction = v.ageRestriction || 18;
+                      return user.ageRestriction >= recAgeRestriction && v.id !== id && v.status === 'Approved';
+                    }
+                    return v.id !== id && v.status === 'Approved';
+                  });
                 setAiRecommendations(recommended);
               }).catch(() => {
                 // Silently fail for AI recommendations
@@ -137,7 +163,7 @@ function WatchPageContent({ id }: { id: string }) {
           });
       }
     }
-  }, [video, firestore, user, videoRef, id]);
+  }, [video, firestore, user, videoRef, id, toast, router]);
 
   if (videoLoading) {
     return (
@@ -199,6 +225,29 @@ function WatchPageContent({ id }: { id: string }) {
       return;
     }
 
+    // Check if user is suspended
+    if (user.status === 'Inactive') {
+      toast({
+        variant: 'destructive',
+        title: 'Account suspended',
+        description: 'Your account has been suspended. Please contact support.',
+      });
+      return;
+    }
+
+    // Check parental controls for certain interactions
+    if (user.parentalControlsEnabled && ['likes', 'dislikes', 'watch-later'].includes(collectionName)) {
+      const videoAgeRestriction = currentVideo.ageRestriction || 18;
+      if (user.ageRestriction && user.ageRestriction < videoAgeRestriction) {
+        toast({
+          variant: 'destructive',
+          title: 'Content restricted',
+          description: 'This content is not available with your current parental control settings.',
+        });
+        return;
+      }
+    }
+
     const docRef = doc(firestore, 'users', user.uid, collectionName, video.id);
     const interactionData = { ...video, addedAt: new Date().toISOString() };
     setDoc(docRef, interactionData, { merge: true })
@@ -218,7 +267,7 @@ function WatchPageContent({ id }: { id: string }) {
         toast({
           variant: 'destructive',
           title: 'An error occurred',
-          description: `Could not complete the action.`,
+          description: `Could not complete the action. Please try again.`,
         });
       });
   };
@@ -288,6 +337,16 @@ function WatchPageContent({ id }: { id: string }) {
       return;
     }
 
+    // Check if user is suspended
+    if (user.status === 'Inactive') {
+      toast({
+        variant: 'destructive',
+        title: 'Account suspended',
+        description: 'Your account has been suspended. Please contact support.',
+      });
+      return;
+    }
+
     try {
       const reportData = {
         videoId: currentVideo.id,
@@ -297,6 +356,8 @@ function WatchPageContent({ id }: { id: string }) {
         reason: 'Inappropriate content', // Could be expanded with a modal for different reasons
         status: 'Open',
         reportedAt: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href,
       };
 
       const reportsRef = collection(firestore, 'reports');
@@ -316,12 +377,22 @@ function WatchPageContent({ id }: { id: string }) {
     }
   };
 
-  const handleCommentSubmit = () => {
+  const handleCommentSubmit = async () => {
     if (!user) {
       toast({
         variant: 'destructive',
         title: 'Please log in',
         description: 'You need to be logged in to comment.',
+      });
+      return;
+    }
+
+    // Check if user is suspended
+    if (user.status === 'Inactive') {
+      toast({
+        variant: 'destructive',
+        title: 'Account suspended',
+        description: 'Your account has been suspended. Please contact support.',
       });
       return;
     }
@@ -335,22 +406,44 @@ function WatchPageContent({ id }: { id: string }) {
       return;
     }
 
-    const commentData = {
-      text: commentText.trim(),
-      userId: user.uid,
-      userName: user.name,
-      userAvatar: user.avatarUrl,
-      createdAt: new Date().toISOString(),
-      videoId: video.id,
-    };
+    // Check comment length
+    if (commentText.trim().length > 1000) {
+      toast({
+        variant: 'destructive',
+        title: 'Comment too long',
+        description: 'Comments must be 1000 characters or less.',
+      });
+      return;
+    }
 
-    const commentsRef = collection(firestore, 'videos', video.id, 'comments');
-    // Add comment logic here
-    setCommentText('');
-    toast({
-      title: 'Comment added',
-      description: 'Your comment has been posted.',
-    });
+    try {
+      const commentData = {
+        text: commentText.trim(),
+        userId: user.uid,
+        userName: user.name,
+        userAvatar: user.avatarUrl,
+        createdAt: new Date().toISOString(),
+        videoId: video.id,
+        moderated: false,
+        likes: 0,
+      };
+
+      const commentsRef = collection(firestore, 'videos', video.id, 'comments');
+      await addDoc(commentsRef, commentData);
+
+      setCommentText('');
+      toast({
+        title: 'Comment added',
+        description: 'Your comment has been posted.',
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Comment failed',
+        description: 'Unable to post comment. Please try again.',
+      });
+    }
   };
 
   return (
@@ -448,26 +541,39 @@ function WatchPageContent({ id }: { id: string }) {
               <Separator className="my-8" />
               <div className="space-y-6 animate-fade-in-up" data-ai-hint="sentiment analysis" style={{ animationDelay: '400ms' }}>
                 <h2 className="text-2xl font-bold">Comments (1,345)</h2>
-                <div className="flex gap-4">
-                  <Avatar>
-                      <AvatarImage src={user?.avatarUrl!} alt={user?.name!} data-ai-hint="person portrait"/>
-                      <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-grow">
-                    <Input
-                      placeholder="Add a comment..."
-                      aria-label="Add a public comment"
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleCommentSubmit()}
-                    />
-                     <div className="mt-2 flex justify-end">
-                       <Button onClick={handleCommentSubmit} disabled={!commentText.trim()}>
-                         Comment
-                       </Button>
-                     </div>
+                {user ? (
+                  <div className="flex gap-4">
+                    <Avatar>
+                        <AvatarImage src={user?.avatarUrl!} alt={user?.name!} data-ai-hint="person portrait"/>
+                        <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-grow">
+                      <Input
+                        placeholder="Add a comment..."
+                        aria-label="Add a public comment"
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleCommentSubmit()}
+                        maxLength={1000}
+                      />
+                       <div className="mt-2 flex justify-between items-center">
+                         <span className="text-sm text-muted-foreground">
+                           {commentText.length}/1000
+                         </span>
+                         <Button onClick={handleCommentSubmit} disabled={!commentText.trim()}>
+                           Comment
+                         </Button>
+                       </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="text-center p-4 bg-muted rounded-lg">
+                    <p className="text-muted-foreground mb-2">Please log in to comment</p>
+                    <Button asChild>
+                      <Link href="/login">Sign In</Link>
+                    </Button>
+                  </div>
+                )}
                  {/* Comments section */}
               </div>
             </div>

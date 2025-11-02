@@ -18,6 +18,8 @@ import {
   Volume1,
   Subtitles,
 } from 'lucide-react';
+import { SmartSkipDetector } from './smart-skip/smart-skip-detector';
+import { CrossDeviceSync } from './sync/cross-device-sync';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { Button } from './ui/button';
@@ -61,10 +63,17 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
   const [gestureStartY, setGestureStartY] = useState<number | null>(null);
   const [gestureStartX, setGestureStartX] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [availableSubtitles, setAvailableSubtitles] = useState<string[]>([]);
   const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
   const [pipSupported, setPipSupported] = useState(false);
+
+  // Multi-track audio states
+  const [availableAudioTracks, setAvailableAudioTracks] = useState<Array<{ id: string; label: string; language: string }>>([]);
+  const [currentAudioTrack, setCurrentAudioTrack] = useState<string>('');
+  const [audioTracksEnabled, setAudioTracksEnabled] = useState(true);
 
   // Enhanced gesture states
   const [brightness, setBrightness] = useState(1);
@@ -400,12 +409,34 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
     const setVideoDuration = () => setDuration(video.duration);
     const handleError = (e: Event) => {
       const target = e.target as HTMLVideoElement;
-      setError(`Video playback error: ${target.error?.message || 'Unknown error'}`);
-      toast({
-        variant: 'destructive',
-        title: 'Video Error',
-        description: 'Unable to load or play this video.',
-      });
+      const errorMessage = target.error?.message || 'Unknown error';
+      setError(`Video playback error: ${errorMessage}`);
+  
+      // Auto-retry logic for network errors
+      if (retryCount < maxRetries && (target.error?.code === 2 || target.error?.code === 3)) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          setError(null);
+          // Force reload the video source
+          if (videoRef.current) {
+            const currentSrc = videoRef.current.src;
+            videoRef.current.src = '';
+            videoRef.current.src = currentSrc;
+          }
+        }, 2000 * (retryCount + 1)); // Exponential backoff
+  
+        toast({
+          variant: 'destructive',
+          title: 'Video Error',
+          description: `Unable to load video. Retrying... (${retryCount + 1}/${maxRetries})`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Video Error',
+          description: 'Unable to load or play this video. Please try refreshing the page.',
+        });
+      }
     };
 
     // Check for subtitle tracks
@@ -415,12 +446,28 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
       setAvailableSubtitles(subtitleTracks.map(track => track.label || track.language));
     };
 
+    // Check for audio tracks (using WebVTT or similar for demo purposes)
+    const checkAudioTracks = () => {
+      // For demo purposes, we'll simulate audio tracks
+      // In a real implementation, this would check video.audioTracks
+      const mockAudioTracks = [
+        { id: 'original', label: 'Original Audio', language: 'en' },
+        { id: 'dubbed', label: 'Dubbed Audio', language: 'en' },
+      ];
+      setAvailableAudioTracks(mockAudioTracks);
+
+      if (mockAudioTracks.length > 0 && !currentAudioTrack) {
+        setCurrentAudioTrack('original');
+      }
+    };
+
     // Check PiP support
     setPipSupported(document.pictureInPictureEnabled);
 
     video.addEventListener('timeupdate', updateProgress);
     video.addEventListener('loadedmetadata', setVideoDuration);
     video.addEventListener('loadedmetadata', checkSubtitles);
+    video.addEventListener('loadedmetadata', checkAudioTracks);
     video.addEventListener('play', () => setIsPlaying(true));
     video.addEventListener('pause', () => setIsPlaying(false));
     video.addEventListener('ratechange', () => setPlaybackRate(video.playbackRate));
@@ -436,6 +483,7 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
       video.removeEventListener('timeupdate', updateProgress);
       video.removeEventListener('loadedmetadata', setVideoDuration);
       video.removeEventListener('loadedmetadata', checkSubtitles);
+      video.removeEventListener('loadedmetadata', checkAudioTracks);
       video.removeEventListener('play', () => setIsPlaying(true));
       video.removeEventListener('pause', () => setIsPlaying(false));
       video.removeEventListener('ratechange', () => setPlaybackRate(video.playbackRate));
@@ -668,6 +716,24 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
     }
   };
 
+  const selectAudioTrack = (trackId: string) => {
+    // In a real implementation, this would switch audio tracks
+    // For demo purposes, we'll just update the state
+    setCurrentAudioTrack(trackId);
+    toast({
+      title: 'Audio track changed',
+      description: `Switched to ${availableAudioTracks.find(t => t.id === trackId)?.label || 'Unknown track'}`,
+    });
+  };
+
+  const toggleAudioTracks = () => {
+    setAudioTracksEnabled(!audioTracksEnabled);
+    toast({
+      title: audioTracksEnabled ? 'Audio tracks disabled' : 'Audio tracks enabled',
+      description: 'Multi-track audio has been toggled.',
+    });
+  };
+
   return (
     <div
       ref={(node) => {
@@ -680,6 +746,9 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
         className,
         isFullscreen && 'fixed inset-0 z-50 rounded-none'
       )}
+      role="region"
+      aria-label="Video player"
+      aria-describedby="video-controls"
       onMouseMove={(e) => {
         showAndAutoHideControls();
         handleMouseMove(e);
@@ -712,6 +781,40 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
           <div className="text-white text-lg">Video will load when in view</div>
         </div>
       )}
+      {/* Smart Skip Detector */}
+      <SmartSkipDetector
+        videoRef={videoRef}
+        currentTime={progress}
+        duration={duration}
+        onSkip={(time) => {
+          if (videoRef.current) {
+            videoRef.current.currentTime = time;
+          }
+        }}
+        className="absolute inset-0"
+      />
+
+      {/* Cross-Device Sync */}
+      <div className="absolute top-20 right-4 z-10">
+        <CrossDeviceSync
+          videoId={video.id}
+          currentTime={progress}
+          isPlaying={isPlaying}
+          onSyncFromDevice={(time, playing) => {
+            if (videoRef.current) {
+              videoRef.current.currentTime = time;
+              if (playing !== isPlaying) {
+                if (playing) {
+                  videoRef.current.play().catch(console.error);
+                } else {
+                  videoRef.current.pause();
+                }
+              }
+            }
+          }}
+        />
+      </div>
+
       {/* Enhanced Gesture indicators */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-5xl">
           {seekIndicator === 'backward' && <Rewind className="animate-ping" />}
@@ -794,8 +897,15 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
           className="w-full h-1.5 absolute top-0 left-0 right-0 opacity-100 cursor-pointer group-hover:h-2 transition-all"
         />
 
-        <div className="flex items-center gap-4 text-white mt-2">
-          <Button variant="ghost" size="icon" className="hover:bg-white/20" onClick={(e) => {e.stopPropagation(); togglePlay();}}>
+        <div id="video-controls" className="flex items-center gap-4 text-white mt-2" role="toolbar" aria-label="Video controls">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hover:bg-white/20"
+            onClick={(e) => {e.stopPropagation(); togglePlay();}}
+            aria-label={isPlaying ? 'Pause video' : 'Play video'}
+            aria-pressed={isPlaying}
+          >
             {isPlaying ? (
               <Pause className="h-5 w-5" />
             ) : (
@@ -863,6 +973,23 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
                          <DropdownMenuItem key={subtitle} onClick={() => selectSubtitle(subtitle)}>
                            <Check className={cn('mr-2 h-4 w-4', currentSubtitle === subtitle ? 'opacity-100' : 'opacity-0')} />
                            {subtitle}
+                         </DropdownMenuItem>
+                       ))}
+                     </DropdownMenuSubContent>
+                   </DropdownMenuSub>
+                 )}
+                 {availableAudioTracks.length > 1 && (
+                   <DropdownMenuSub>
+                     <DropdownMenuSubTrigger>Audio Tracks</DropdownMenuSubTrigger>
+                     <DropdownMenuSubContent sideOffset={5} alignOffset={-5} className="bg-black/80 text-white border-white/20">
+                       <DropdownMenuItem onClick={toggleAudioTracks}>
+                         <Check className={cn('mr-2 h-4 w-4', audioTracksEnabled ? 'opacity-100' : 'opacity-0')} />
+                         {audioTracksEnabled ? 'Disable' : 'Enable'} Multi-Track Audio
+                       </DropdownMenuItem>
+                       {availableAudioTracks.map((track) => (
+                         <DropdownMenuItem key={track.id} onClick={() => selectAudioTrack(track.id)}>
+                           <Check className={cn('mr-2 h-4 w-4', currentAudioTrack === track.id ? 'opacity-100' : 'opacity-0')} />
+                           {track.label} ({track.language})
                          </DropdownMenuItem>
                        ))}
                      </DropdownMenuSubContent>

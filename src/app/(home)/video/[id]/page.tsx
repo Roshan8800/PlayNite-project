@@ -13,6 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { summarizeContent } from '@/ai/flows/content-summarization';
 import { generateTags } from '@/ai/flows/ai-tag-generation';
+import { VideoReactions } from '@/components/reactions/video-reactions';
+import { SocialPlaylistManager } from '@/components/playlists/social-playlist-manager';
+import { WatchPartyManager } from '@/components/watch-parties/watch-party-manager';
 import {
   Bell,
   Download,
@@ -221,6 +224,22 @@ function VideoPageContent({ id }: { id: string }) {
                     {currentVideo.tags && currentVideo.tags.length > 0 ? currentVideo.tags.map((tag, i) => <Badge key={i} variant="secondary">{tag}</Badge>) : <Skeleton className="h-6 w-48"/>}
                 </div>
             </div>
+
+            {/* Video Reactions */}
+            <div className="mt-6 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                <VideoReactions videoId={id} />
+            </div>
+
+            {/* Social Playlist Manager */}
+            <div className="mt-6 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+                <SocialPlaylistManager videoId={id} />
+            </div>
+
+            {/* Watch Party Manager */}
+            <div className="mt-6 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
+                <WatchPartyManager videoId={id} videoTitle={currentVideo.title} />
+            </div>
+
             <Separator className="my-8" />
             <div className="space-y-6 animate-fade-in-up" data-ai-hint="sentiment analysis" style={{ animationDelay: '400ms' }}>
               <h2 className="text-2xl font-bold">Comments (1,345)</h2>

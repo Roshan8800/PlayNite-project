@@ -69,8 +69,8 @@ export function PushNotificationManager() {
         ),
       });
 
-      // Send subscription to server
-      await fetch('/api/push-subscription', {
+      // Send subscription to server with error handling
+      const response = await fetch('/api/push-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,6 +80,10 @@ export function PushNotificationManager() {
           subscription,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
 
       // Update user profile
       const userRef = doc(firestore, 'users', user.uid);
@@ -94,10 +98,11 @@ export function PushNotificationManager() {
       });
     } catch (error) {
       console.error('Error subscribing to push notifications:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
         variant: 'destructive',
         title: 'Subscription failed',
-        description: 'Failed to subscribe to push notifications.',
+        description: `Failed to subscribe to push notifications: ${errorMessage}`,
       });
     }
   };

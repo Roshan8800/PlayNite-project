@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  Bell,
   Clock,
   Download,
   Flame,
@@ -39,6 +40,7 @@ const menuItems = [
   { href: '/watch-later', label: 'Watch Later', icon: Video },
   { href: '/liked', label: 'Liked Videos', icon: ThumbsUp },
   { href: '/downloads', label: 'Downloads', icon: Download },
+  { href: '/notifications', label: 'Notifications', icon: Bell },
 ];
 
 export default function AppSidebar() {
@@ -60,24 +62,39 @@ export default function AppSidebar() {
   const renderUserArea = () => {
     if (loading) {
       return (
-         <div className="flex items-center gap-3 p-2">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="flex-grow space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-32" />
-            </div>
-        </div>
+          <div className="flex items-center gap-3 p-2">
+             <Skeleton className="h-10 w-10 rounded-full" />
+             <div className="flex-grow space-y-2">
+               <Skeleton className="h-4 w-24" />
+               <Skeleton className="h-3 w-32" />
+             </div>
+         </div>
       )
     }
 
     if (!user) {
       return (
-        <div className="p-2">
+        <div className="p-2 space-y-2">
           <Button className="w-full" asChild>
-            <Link href="/login">Log In / Sign Up</Link>
+            <Link href="/login">Log In</Link>
+          </Button>
+          <Button variant="outline" className="w-full" asChild>
+            <Link href="/signup">Sign Up</Link>
           </Button>
         </div>
       )
+    }
+
+    // Check if user is suspended or inactive
+    if (user.status === 'Inactive') {
+      return (
+        <div className="p-2 text-center">
+          <p className="text-sm text-muted-foreground mb-2">Account suspended</p>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/contact-support">Contact Support</Link>
+          </Button>
+        </div>
+      );
     }
 
     return (
@@ -90,15 +107,18 @@ export default function AppSidebar() {
             <div className="flex-grow">
               <p className="font-semibold">{user.name}</p>
               <p className="text-sm text-muted-foreground">{user.email}</p>
+              {user.role === 'Admin' && (
+                <p className="text-xs text-primary font-medium">Admin</p>
+              )}
             </div>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-2">
+              <Button variant="outline" size="sm" asChild>
+                 <Link href="/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
+             </Button>
              <Button variant="outline" size="sm" asChild>
-                <Link href="/profile"><User className="mr-2 h-4 w-4" /> Profile</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-                <Link href="/settings"><Settings className="mr-2 h-4 w-4" /> Settings</Link>
-            </Button>
+                 <Link href="/settings"><Settings className="mr-2 h-4 w-4" /> Settings</Link>
+             </Button>
         </div>
         <Button variant="ghost" className="w-full justify-start mt-1" onClick={handleLogout}>
            <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -109,8 +129,10 @@ export default function AppSidebar() {
 
   return (
     <Sidebar side="right" collapsible="offcanvas" className="border-l">
-      <SidebarHeader>
-        <Logo />
+      <SidebarHeader className="p-4">
+        <Link href="/home" className="flex items-center justify-center">
+          <Logo />
+        </Link>
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>

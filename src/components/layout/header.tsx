@@ -102,10 +102,27 @@ export default function Header() {
 
     if (!user) {
       return (
-        <Button asChild>
-          <Link href="/login">Login</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" asChild>
+            <Link href="/signup">Sign Up</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/login">Login</Link>
+          </Button>
+        </div>
       )
+    }
+
+    // Check if user is suspended or inactive
+    if (user.status === 'Inactive') {
+      return (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Account suspended</span>
+          <Button variant="outline" size="sm" onClick={() => router.push('/contact-support')}>
+            Contact Support
+          </Button>
+        </div>
+      );
     }
 
     return (
@@ -171,27 +188,27 @@ export default function Header() {
       </div>
 
       <div className="relative flex-1 md:flex-initial md:ml-auto">
-         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-          <PopoverTrigger asChild>
-            <form onSubmit={handleSearchSubmit} className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search videos..."
-                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
-                data-ai-hint="smart search suggestions"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onFocus={() => searchQuery.length > 2 && setIsPopoverOpen(true)}
-              />
-            </form>
-          </PopoverTrigger>
-          {suggestions.length > 0 && (
-            <PopoverContent className="p-0 w-[300px] lg:w-[300px]" align="start">
-              <SearchPopover suggestions={suggestions} onSuggestionClick={handleSuggestionClick} />
-            </PopoverContent>
-          )}
-        </Popover>
+          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+           <PopoverTrigger asChild>
+             <form onSubmit={handleSearchSubmit} className="relative">
+               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+               <Input
+                 type="search"
+                 placeholder="Search videos..."
+                 className="pl-8 w-full sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                 data-ai-hint="smart search suggestions"
+                 value={searchQuery}
+                 onChange={handleSearchChange}
+                 onFocus={() => searchQuery.length > 2 && setIsPopoverOpen(true)}
+               />
+             </form>
+           </PopoverTrigger>
+           {suggestions.length > 0 && (
+             <PopoverContent className="p-0 w-[300px] lg:w-[300px]" align="start">
+               <SearchPopover suggestions={suggestions} onSuggestionClick={handleSuggestionClick} />
+             </PopoverContent>
+           )}
+         </Popover>
       </div>
 
       <div className="flex items-center gap-2">

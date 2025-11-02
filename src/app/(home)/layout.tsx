@@ -1,15 +1,14 @@
+'use client';
+
 import AppSidebar from '@/components/layout/app-sidebar';
 import Header from '@/components/layout/header';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-
-export const metadata: Metadata = {
-  title: 'PlayNite Home',
-  description: 'Explore a vast library of videos, from educational content to entertainment.',
-};
+import { useUser } from '@/firebase/auth/use-user';
+import { useRouter } from 'next/navigation';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 function LayoutSkeleton() {
   return (
@@ -31,11 +30,57 @@ function LayoutSkeleton() {
   );
 }
 
-export default function HomeLayout({
+function HomeLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user, loading } = useUser();
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      // Check if user has age verification and meets requirements
+      const ageVerified = document.cookie.includes('age_verified=true');
+      const userAge = user?.ageRestriction || 18;
+
+      if (!ageVerified && userAge < 18) {
+        router.push('/age-gate');
+        return;
+      }
+
+      // Check parental controls
+      if (user?.parentalControlsEnabled && userAge < 18) {
+        router.push('/parental-block');
+        return;
+      }
+
+      setIsAuthorized(true);
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Checking access permissions...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
@@ -51,5 +96,17 @@ export default function HomeLayout({
         </div>
       </div>
     </SidebarProvider>
+  );
+}
+
+export default function HomeLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ErrorBoundary>
+      <HomeLayoutContent>{children}</HomeLayoutContent>
+    </ErrorBoundary>
   );
 }

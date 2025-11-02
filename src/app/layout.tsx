@@ -29,7 +29,6 @@ export default function RootLayout({
         <ErrorBoundary>
           <AgeGate>
             <FirebaseClientProvider>
-              <FirebaseErrorListener />
               {children}
             </FirebaseClientProvider>
           </AgeGate>

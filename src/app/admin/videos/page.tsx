@@ -44,6 +44,20 @@ export default function AdminVideosPage() {
   const { data: videos, loading, error } = useCollection(videosRef);
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Pending' | 'Approved' | 'Rejected'>('all');
+
+  // Filter videos based on search and status
+  const filteredVideos = videos?.filter(video => {
+    const matchesSearch = !searchQuery ||
+      video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      video.channel?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      video.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus = statusFilter === 'all' || video.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  }) || [];
 
   const handleDelete = (videoId: string, videoTitle: string) => {
     if (!window.confirm(`Are you sure you want to delete "${videoTitle}"?`)) return;
@@ -108,12 +122,13 @@ export default function AdminVideosPage() {
     }
   };
 
-  const handleBulkAction = async (action: string) => {
-    if (selectedVideos.size === 0) return;
+  const handleBulkAction = async (action: string, videoIds?: string[]) => {
+    const targetVideos = videoIds || Array.from(selectedVideos);
+    if (targetVideos.length === 0) return;
 
     try {
       const batch = writeBatch(firestore);
-      selectedVideos.forEach(videoId => {
+      targetVideos.forEach(videoId => {
         const docRef = doc(firestore, 'videos', videoId);
         if (action === 'approve') {
           batch.update(docRef, { status: 'Approved' });
@@ -124,8 +139,8 @@ export default function AdminVideosPage() {
       await batch.commit();
 
       toast({
-        title: 'Bulk Action Completed',
-        description: `${selectedVideos.size} video(s) have been ${action}d.`
+        title: 'Action Completed',
+        description: `${targetVideos.length} video(s) have been ${action}d.`
       });
       setSelectedVideos(new Set());
     } catch (error) {
@@ -133,7 +148,7 @@ export default function AdminVideosPage() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to perform bulk action. Please try again.'
+        description: 'Failed to perform action. Please try again.'
       });
     }
   };
@@ -198,9 +213,26 @@ export default function AdminVideosPage() {
                 A list of all videos in your app.
               </CardDescription>
             </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search videos..." className="pl-8 w-64" />
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search videos..."
+                  className="pl-8 w-64"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <select
+                className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+              >
+                <option value="all">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
             </div>
           </div>
         </CardHeader>
@@ -227,6 +259,7 @@ export default function AdminVideosPage() {
                 </TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Channel</TableHead>
+                <TableHead className="hidden md:table-cell">Status</TableHead>
                 <TableHead className="hidden md:table-cell">Views</TableHead>
                 <TableHead className="hidden md:table-cell">Uploaded</TableHead>
                 <TableHead>
@@ -243,8 +276,8 @@ export default function AdminVideosPage() {
                     </TableCell>
                   </TableRow>
                 )}
-                {videos && videos.length > 0 ? (
-                  videos.map((video) => (
+                {filteredVideos && filteredVideos.length > 0 ? (
+                  filteredVideos.map((video) => (
                     <TableRow key={video.id} className="transition-colors hover:bg-muted/50">
                       <TableCell>
                         <Button
@@ -277,6 +310,15 @@ export default function AdminVideosPage() {
                         {(video as Video).views.toLocaleString()}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
+                        <Badge variant={
+                          (video as Video).status === 'Approved' ? 'default' :
+                          (video as Video).status === 'Rejected' ? 'destructive' :
+                          'secondary'
+                        }>
+                          {(video as Video).status || 'Pending'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {formatDistanceToNow(new Date((video as Video).uploadedAt || Date.now()), { addSuffix: true })}
                       </TableCell>
                       <TableCell>
@@ -294,6 +336,16 @@ export default function AdminVideosPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem>Edit</DropdownMenuItem>
+                            {(video as Video).status === 'Pending' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleBulkAction('approve', [video.id])}>
+                                  Approve
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleBulkAction('reject', [video.id])}>
+                                  Reject
+                                </DropdownMenuItem>
+                              </>
+                            )}
                             <DropdownMenuItem onClick={() => handleDelete(video.id, (video as Video).title)}>Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

@@ -169,10 +169,9 @@ export const VideoCard = memo(function VideoCard({ video, variant = 'default' }:
         </Card>
       </Link>
     );
-  );
-}
+  }
 
-return (
+  return (
     <Link href={`/video/${video.id}`} className="group block">
       <Card className="flex h-full flex-col overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
         <div className="relative aspect-video" ref={inViewRef}>

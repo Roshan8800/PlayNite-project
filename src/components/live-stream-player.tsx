@@ -15,7 +15,11 @@ import {
   Heart,
   Share2,
   Users,
-  Eye
+  Eye,
+  Send,
+  UserPlus,
+  UserCheck,
+  Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -30,6 +34,10 @@ interface LiveStream {
   thumbnailUrl: string;
   category: string;
   startedAt: string;
+  description?: string;
+  tags?: string[];
+  quality?: string;
+  chatEnabled?: boolean;
 }
 
 interface LiveStreamPlayerProps {
@@ -45,6 +53,10 @@ export function LiveStreamPlayer({ stream, className }: LiveStreamPlayerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, user: string, message: string, timestamp: Date}>>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [showChat, setShowChat] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -99,6 +111,11 @@ export function LiveStreamPlayer({ stream, className }: LiveStreamPlayerProps) {
         setIsFullscreen(true);
       } catch (error) {
         console.error('Error entering fullscreen:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Fullscreen Error',
+          description: 'Unable to enter fullscreen mode.',
+        });
       }
     } else {
       try {
@@ -106,6 +123,11 @@ export function LiveStreamPlayer({ stream, className }: LiveStreamPlayerProps) {
         setIsFullscreen(false);
       } catch (error) {
         console.error('Error exiting fullscreen:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Fullscreen Error',
+          description: 'Unable to exit fullscreen mode.',
+        });
       }
     }
   };
@@ -116,6 +138,46 @@ export function LiveStreamPlayer({ stream, className }: LiveStreamPlayerProps) {
       title: isLiked ? 'Unliked stream' : 'Liked stream',
       description: isLiked ? 'Removed from your liked streams' : 'Added to your liked streams',
     });
+  };
+
+  const handleFollow = () => {
+    setIsFollowing(!isFollowing);
+    toast({
+      title: isFollowing ? 'Unfollowed streamer' : 'Following streamer',
+      description: isFollowing ? 'You will no longer receive notifications' : 'You will receive notifications for new streams',
+    });
+  };
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim()) return;
+
+    const message = {
+      id: Date.now().toString(),
+      user: 'You',
+      message: newMessage.trim(),
+      timestamp: new Date()
+    };
+
+    setChatMessages(prev => [...prev, message]);
+    setNewMessage('');
+
+    // Simulate receiving a response
+    setTimeout(() => {
+      const responses = [
+        "Thanks for watching! 🎉",
+        "Great stream today!",
+        "Love this content!",
+        "Keep it up! 🔥"
+      ];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+
+      setChatMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        user: stream.streamerName,
+        message: randomResponse,
+        timestamp: new Date()
+      }]);
+    }, 1000 + Math.random() * 2000);
   };
 
   const handleShare = async () => {
@@ -183,7 +245,25 @@ export function LiveStreamPlayer({ stream, className }: LiveStreamPlayerProps) {
                   <h3 className="font-semibold text-white">{stream.title}</h3>
                   <p className="text-sm text-gray-300">{stream.streamerName}</p>
                   <p className="text-xs text-gray-400">{stream.category}</p>
+                  {stream.tags && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {stream.tags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="text-xs bg-white/20 text-white px-2 py-1 rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFollow}
+                  className={`ml-2 ${isFollowing ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                >
+                  {isFollowing ? <UserCheck className="h-4 w-4 mr-1" /> : <UserPlus className="h-4 w-4 mr-1" />}
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -257,13 +337,80 @@ export function LiveStreamPlayer({ stream, className }: LiveStreamPlayerProps) {
         />
       </div>
 
-      {/* Chat/Interaction Panel (Optional) */}
-      <div className="absolute top-4 right-4">
-        <Button variant="secondary" size="sm" className="bg-black/50 hover:bg-black/70">
+      {/* Chat/Interaction Panel */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="bg-black/50 hover:bg-black/70"
+          onClick={() => setShowChat(!showChat)}
+        >
           <MessageCircle className="h-4 w-4 mr-2" />
-          Chat
+          Chat ({chatMessages.length})
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="bg-black/50 hover:bg-black/70"
+          onClick={handleLike}
+        >
+          <Heart className={`h-4 w-4 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
         </Button>
       </div>
+
+      {/* Chat Panel */}
+      {showChat && (
+        <div className="absolute top-16 right-4 w-80 h-96 bg-black/90 rounded-lg border border-white/20 flex flex-col">
+          <div className="p-3 border-b border-white/20 flex items-center justify-between">
+            <h3 className="text-white font-semibold">Live Chat</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChat(false)}
+              className="text-white hover:bg-white/20"
+            >
+              ✕
+            </Button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {chatMessages.length === 0 ? (
+              <div className="text-center text-gray-400 text-sm mt-8">
+                No messages yet. Be the first to chat!
+              </div>
+            ) : (
+              chatMessages.map((msg) => (
+                <div key={msg.id} className="text-white text-sm">
+                  <span className="font-semibold text-blue-400">{msg.user}:</span>{' '}
+                  <span>{msg.message}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="p-3 border-t border-white/20">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Type a message..."
+                className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                maxLength={200}
+              />
+              <Button
+                size="sm"
+                onClick={handleSendMessage}
+                disabled={!newMessage.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

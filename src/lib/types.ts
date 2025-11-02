@@ -16,6 +16,7 @@ export type Video = {
   tags?: string[];
   summary?: string;
   addedAt?: string;
+  ageRestriction?: number;
   // Additional fields from CSV import
   pornstars?: string;
   rating?: number;
