@@ -48,8 +48,13 @@ export default function AppSidebar() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.push('/login');
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Handle logout error gracefully
+    }
   };
   
   const renderUserArea = () => {

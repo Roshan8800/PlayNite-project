@@ -5,6 +5,8 @@ import { Check } from 'lucide-react';
 import { Logo } from '@/components/icons/logo';
 import type { Metadata } from 'next';
 
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: 'Welcome to PlayNite',
   description: 'Your new home for incredible video content. Sign up or start watching as a guest.',

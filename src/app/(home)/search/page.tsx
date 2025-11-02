@@ -3,12 +3,15 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { VideoCard } from '@/components/video-card';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search as SearchIcon } from 'lucide-react';
+import { Search as SearchIcon, Filter, SortAsc, SortDesc } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 function SearchResults() {
   const searchParams = useSearchParams();
@@ -16,6 +19,41 @@ function SearchResults() {
   const firestore = useFirestore();
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<'relevance' | 'newest' | 'oldest' | 'views'>('relevance');
+  const [filterBy, setFilterBy] = useState<'all' | 'short' | 'long'>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const applyFiltersAndSort = (videos: Video[]): Video[] => {
+    let filtered = videos;
+
+    // Apply duration filter
+    if (filterBy !== 'all') {
+      filtered = filtered.filter(video => {
+        const duration = parseInt(video.duration || '0');
+        if (filterBy === 'short') return duration < 300; // Less than 5 minutes
+        if (filterBy === 'long') return duration > 1800; // More than 30 minutes
+        return true;
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime();
+        case 'oldest':
+          return new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime();
+        case 'views':
+          return (b.views || 0) - (a.views || 0);
+        case 'relevance':
+        default:
+          // For relevance, keep original order (basic implementation)
+          return 0;
+      }
+    });
+
+    return filtered;
+  };
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -27,27 +65,51 @@ function SearchResults() {
       setLoading(true);
       try {
         const videosRef = collection(firestore, 'videos');
-        // Firestore doesn't support full-text search natively.
-        // This is a basic "starts with" search.
-        // For a real app, a third-party search service like Algolia or Typesense is recommended.
-        const titleQuery = query(
+        // Enhanced search: search in title, description, and tags
+        const queries = [];
+
+        // Title search
+        queries.push(query(
           videosRef,
-          where('title', '>=', queryParam),
-          where('title', '<=', queryParam + '\uf8ff')
-        );
-        const snapshot = await getDocs(titleQuery);
-        const videos = snapshot.docs.map(
-          (doc) => ({ ...doc.data(), id: doc.id } as Video)
-        );
-        setFilteredVideos(videos.filter(v => v.status === 'Approved'));
+          where('title', '>=', queryParam.toLowerCase()),
+          where('title', '<=', queryParam.toLowerCase() + '\uf8ff'),
+          where('status', '==', 'Approved'),
+          orderBy('title'),
+          limit(50)
+        ));
+
+        // Description search (basic implementation)
+        queries.push(query(
+          videosRef,
+          where('description', '>=', queryParam.toLowerCase()),
+          where('description', '<=', queryParam.toLowerCase() + '\uf8ff'),
+          where('status', '==', 'Approved'),
+          orderBy('description'),
+          limit(50)
+        ));
+
+        const results = await Promise.all(queries.map(q => getDocs(q)));
+        const allVideos = new Map<string, Video>();
+
+        results.forEach(snapshot => {
+          snapshot.docs.forEach(doc => {
+            const video = { ...doc.data(), id: doc.id } as Video;
+            allVideos.set(video.id, video);
+          });
+        });
+
+        const videos = Array.from(allVideos.values());
+        const filteredAndSorted = applyFiltersAndSort(videos);
+        setFilteredVideos(filteredAndSorted);
       } catch (error) {
         console.error('Error fetching search results:', error);
+        setFilteredVideos([]);
       } finally {
         setLoading(false);
       }
     };
     fetchVideos();
-  }, [queryParam, firestore]);
+  }, [queryParam, firestore, sortBy, filterBy]);
 
   return (
     <div className="space-y-8">
@@ -78,8 +140,10 @@ function SearchResults() {
         </div>
       ) : filteredVideos.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {filteredVideos.map((video) => (
-            <VideoCard key={video.id} video={video} />
+          {filteredVideos.map((video, index) => (
+            <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+              <VideoCard video={video} />
+            </div>
           ))}
         </div>
       ) : (

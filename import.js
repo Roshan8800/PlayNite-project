@@ -38,7 +38,8 @@ fs.createReadStream(filePath)
         row.tags = [];
       }
 
-      // Prepare the document data (assuming fields: title, video_url, thumbnail_url, tags, duration, iframe_code, embed_code)
+      // Prepare the document data - map CSV columns to Firestore fields
+      // CSV columns: iframe_code, thumbnail_url, screenshots, title, tags, categories, pornstars, duration, views, rating, likes, dislikes, video_url, thumbnail_urls
       const docData = {
         title: row.title || '',
         video_url: row.video_url || '',
@@ -46,7 +47,16 @@ fs.createReadStream(filePath)
         tags: row.tags,
         duration: row.duration || '',
         iframe_code: row.iframe_code || '',
-        embed_code: row.embed_code || ''
+        embed_code: row.embed_code || '',
+        // Additional fields from CSV
+        pornstars: row.pornstars || '',
+        views: parseInt(row.views) || 0,
+        rating: parseFloat(row.rating) || 0,
+        likes: parseInt(row.likes) || 0,
+        dislikes: parseInt(row.dislikes) || 0,
+        categories: row.categories ? row.categories.split(';') : [],
+        thumbnail_urls: row.thumbnail_urls ? row.thumbnail_urls.split(';') : [],
+        screenshots: row.screenshots ? row.screenshots.split(';') : []
       };
 
       // Add to the current batch

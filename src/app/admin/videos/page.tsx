@@ -25,10 +25,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, Search } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Search, CheckSquare, Square } from 'lucide-react';
 import Image from 'next/image';
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, deleteDoc, doc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import { useState } from 'react';
 import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +42,8 @@ export default function AdminVideosPage() {
   const { toast } = useToast();
   const videosRef = collection(firestore, 'videos');
   const { data: videos, loading, error } = useCollection(videosRef);
+  const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<string>('');
 
   const handleDelete = (videoId: string, videoTitle: string) => {
     if (!window.confirm(`Are you sure you want to delete "${videoTitle}"?`)) return;
@@ -57,6 +60,82 @@ export default function AdminVideosPage() {
         errorEmitter.emit('permission-error', permissionError);
         toast({ variant: 'destructive', title: 'Error', description: e.message });
       });
+  };
+
+  const handleSelectVideo = (videoId: string) => {
+    const newSelected = new Set(selectedVideos);
+    if (newSelected.has(videoId)) {
+      newSelected.delete(videoId);
+    } else {
+      newSelected.add(videoId);
+    }
+    setSelectedVideos(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedVideos.size === videos?.length) {
+      setSelectedVideos(new Set());
+    } else {
+      setSelectedVideos(new Set(videos?.map(v => v.id) || []));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedVideos.size === 0) return;
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedVideos.size} video(s)?`)) return;
+
+    try {
+      const batch = writeBatch(firestore);
+      selectedVideos.forEach(videoId => {
+        const docRef = doc(firestore, 'videos', videoId);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+
+      toast({
+        title: 'Videos Deleted',
+        description: `${selectedVideos.size} video(s) have been removed.`
+      });
+      setSelectedVideos(new Set());
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete videos. Please try again.'
+      });
+    }
+  };
+
+  const handleBulkAction = async (action: string) => {
+    if (selectedVideos.size === 0) return;
+
+    try {
+      const batch = writeBatch(firestore);
+      selectedVideos.forEach(videoId => {
+        const docRef = doc(firestore, 'videos', videoId);
+        if (action === 'approve') {
+          batch.update(docRef, { status: 'Approved' });
+        } else if (action === 'reject') {
+          batch.update(docRef, { status: 'Rejected' });
+        }
+      });
+      await batch.commit();
+
+      toast({
+        title: 'Bulk Action Completed',
+        description: `${selectedVideos.size} video(s) have been ${action}d.`
+      });
+      setSelectedVideos(new Set());
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to perform bulk action. Please try again.'
+      });
+    }
   };
 
   const renderLoading = () => (
@@ -91,7 +170,22 @@ export default function AdminVideosPage() {
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" /> Upload Video
           </Button>
-          <Button variant="outline">Bulk Edit</Button>
+          {selectedVideos.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {selectedVideos.size} selected
+              </span>
+              <Button variant="outline" size="sm" onClick={handleBulkDelete}>
+                Delete Selected
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleBulkAction('approve')}>
+                Approve Selected
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleBulkAction('reject')}>
+                Reject Selected
+              </Button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -114,6 +208,20 @@ export default function AdminVideosPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSelectAll}
+                    className="h-6 w-6 p-0"
+                  >
+                    {selectedVideos.size === videos?.length && videos?.length > 0 ? (
+                      <CheckSquare className="h-4 w-4" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead className="hidden w-[100px] sm:table-cell">
                   <span className="sr-only">Image</span>
                 </TableHead>
@@ -138,6 +246,20 @@ export default function AdminVideosPage() {
                 {videos && videos.length > 0 ? (
                   videos.map((video) => (
                     <TableRow key={video.id} className="transition-colors hover:bg-muted/50">
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSelectVideo(video.id)}
+                          className="h-6 w-6 p-0"
+                        >
+                          {selectedVideos.has(video.id) ? (
+                            <CheckSquare className="h-4 w-4" />
+                          ) : (
+                            <Square className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Image
                           alt={(video as Video).title}
@@ -155,7 +277,7 @@ export default function AdminVideosPage() {
                         {(video as Video).views.toLocaleString()}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {formatDistanceToNow(new Date((video as Video).uploadedAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date((video as Video).uploadedAt || Date.now()), { addSuffix: true })}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>

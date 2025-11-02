@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { AgeGate } from '@/components/age-gate';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 export const metadata: Metadata = {
   title: 'PlayNite',
@@ -24,9 +26,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <FirebaseClientProvider>
-          {children}
-        </FirebaseClientProvider>
+        <ErrorBoundary>
+          <AgeGate>
+            <FirebaseClientProvider>
+              <FirebaseErrorListener />
+              {children}
+            </FirebaseClientProvider>
+          </AgeGate>
+        </ErrorBoundary>
         <Toaster />
       </body>
     </html>

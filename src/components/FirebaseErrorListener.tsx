@@ -2,13 +2,21 @@
 
 import { useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { useToast } from '@/hooks/use-toast';
 
 export function FirebaseErrorListener() {
+  const { toast } = useToast();
+
   useEffect(() => {
-    const handlePermissionError = (error: any) => {
-      // For demonstration, we'll just throw it so Next.js can show the overlay.
-      // In a real app, you might want to log this to a service or show a toast.
-      throw error;
+    const handlePermissionError = (error: FirestorePermissionError) => {
+      console.error('Firestore permission error:', error.context);
+
+      toast({
+        variant: 'destructive',
+        title: 'Permission Error',
+        description: 'You do not have permission to perform this action. Please try logging in again.',
+      });
     };
 
     errorEmitter.on('permission-error', handlePermissionError);
@@ -16,7 +24,7 @@ export function FirebaseErrorListener() {
     return () => {
       errorEmitter.off('permission-error', handlePermissionError);
     };
-  }, []);
+  }, [toast]);
 
   return null;
 }

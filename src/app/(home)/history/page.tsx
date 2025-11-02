@@ -111,9 +111,13 @@ export default function HistoryPage() {
             Videos you've watched recently.
           </p>
         </div>
-        <Button variant="destructive" onClick={handleClearHistory} disabled={!history || history.length === 0}>Clear History</Button>
+        {history && history.length > 0 && (
+          <Button variant="destructive" onClick={handleClearHistory}>
+            Clear History
+          </Button>
+        )}
       </header>
-      
+
       {renderContent()}
     </div>
   );

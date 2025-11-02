@@ -51,15 +51,17 @@ export default function WatchLaterPage() {
 
    return (
      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-       {watchLaterVideos?.map((video: any) => (
-         <VideoCard key={video.id} video={video} />
+       {watchLaterVideos?.map((video: any, index) => (
+         <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+           <VideoCard video={video} />
+         </div>
        ))}
      </div>
    )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <header>
         <h1 className="text-4xl font-headline font-bold tracking-tight">
           Watch Later
@@ -68,7 +70,7 @@ export default function WatchLaterPage() {
           Your saved videos for future viewing.
         </p>
       </header>
-      
+
       {renderContent()}
     </div>
   );

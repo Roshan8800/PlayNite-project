@@ -1,11 +1,13 @@
 'use client';
 
 import Image from 'next/image';
+import { useInView } from 'react-intersection-observer';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import type { Video } from '@/lib/types';
 import { Clock, MoreVertical, PlayCircle, ThumbsUp } from 'lucide-react';
+import { memo } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,10 +28,14 @@ interface VideoCardProps {
   variant?: 'default' | 'horizontal';
 }
 
-export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
+export const VideoCard = memo(function VideoCard({ video, variant = 'default' }: VideoCardProps) {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
+  const { ref: inViewRef, inView } = useInView({
+    threshold: 0.1,
+    triggerOnce: true,
+  });
 
   const handleInteraction = (
     e: React.MouseEvent,
@@ -87,9 +93,9 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
     handleInteraction(e, 'likes', 'Video Liked', `You liked "${video.title}".`);
   };
 
-  const uploadedAtDistance = formatDistanceToNow(new Date(video.uploadedAt), {
-    addSuffix: true,
-  });
+  const uploadedAtDistance = video.uploadedAt
+    ? formatDistanceToNow(new Date(video.uploadedAt), { addSuffix: true })
+    : 'Recently added';
 
   const viewsFormatted =
     video.views > 1000000
@@ -103,13 +109,21 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
       <Link href={`/video/${video.id}`} className="group block">
         <Card className="flex h-full overflow-hidden transition-all duration-200 hover:bg-card/80 hover:shadow-md">
           <div className="relative aspect-video w-40 flex-shrink-0">
-            <Image
-              src={video.thumbnailUrl}
-              alt={video.title}
-              fill
-              className="object-cover"
-              data-ai-hint={video.thumbnailHint}
-            />
+            {inView ? (
+              <Image
+                src={video.thumbnailUrl}
+                alt={video.title}
+                fill
+                className="object-cover"
+                data-ai-hint={video.thumbnailHint}
+                priority={false}
+                quality={75}
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                <div className="text-gray-500">Loading...</div>
+              </div>
+            )}
             <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
               <PlayCircle className="h-10 w-10 text-white/80" />
             </div>
@@ -119,7 +133,7 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
               {video.title}
             </h3>
             <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-              {video.channel}
+              {video.channel || video.pornstars || 'Unknown'}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               {viewsFormatted} views &bull; {uploadedAtDistance}
@@ -155,19 +169,28 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
         </Card>
       </Link>
     );
-  }
+  );
+}
 
-  return (
+return (
     <Link href={`/video/${video.id}`} className="group block">
       <Card className="flex h-full flex-col overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-        <div className="relative aspect-video">
-          <Image
-            src={video.thumbnailUrl}
-            alt={video.title}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            data-ai-hint={video.thumbnailHint}
-          />
+        <div className="relative aspect-video" ref={inViewRef}>
+          {inView ? (
+            <Image
+              src={video.thumbnailUrl}
+              alt={video.title}
+              fill
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              data-ai-hint={video.thumbnailHint}
+              priority={false}
+              quality={75}
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+              <div className="text-gray-500">Loading...</div>
+            </div>
+          )}
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
             <PlayCircle className="h-12 w-12 text-white/80" />
           </div>
@@ -179,15 +202,15 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
         <div className="flex flex-grow flex-col p-3">
           <div className="flex items-start gap-3">
             <Avatar className="mt-1 h-9 w-9">
-              <AvatarImage src={video.channelAvatarUrl} alt={video.channel} />
-              <AvatarFallback>{video.channel.charAt(0)}</AvatarFallback>
+              <AvatarImage src={video.channelAvatarUrl} alt={video.channel || video.pornstars || 'Unknown'} />
+              <AvatarFallback>{(video.channel || video.pornstars || 'U').charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-grow">
               <h3 className="line-clamp-2 font-semibold leading-snug group-hover:text-accent">
                 {video.title}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                {video.channel}
+                {video.channel || video.pornstars || 'Unknown'}
               </p>
               <p className="text-sm text-muted-foreground">
                 {viewsFormatted} views &bull; {uploadedAtDistance}
@@ -224,4 +247,4 @@ export function VideoCard({ video, variant = 'default' }: VideoCardProps) {
       </Card>
     </Link>
   );
-}
+});

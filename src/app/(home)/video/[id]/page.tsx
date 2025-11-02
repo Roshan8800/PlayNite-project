@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { VideoCard } from '@/components/video-card';
 import { summarizeContent } from '@/ai/flows/content-summarization';
 import { generateTags } from '@/ai/flows/ai-tag-generation';
 import {
@@ -21,7 +20,17 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
-import { VideoPlayer } from '@/components/video-player';
+import dynamic from 'next/dynamic';
+
+// Dynamic imports for performance
+const VideoCard = dynamic(() => import('@/components/video-card').then(mod => ({ default: mod.VideoCard })), {
+  loading: () => <Skeleton className="h-24 w-40" />,
+  ssr: false,
+});
+const VideoPlayer = dynamic(() => import('@/components/video-player').then(mod => ({ default: mod.VideoPlayer })), {
+  loading: () => <Skeleton className="aspect-video w-full" />,
+  ssr: false,
+});
 import { useDoc, useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, doc, query, where, limit, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState, Suspense } from 'react';
@@ -44,7 +53,7 @@ function VideoPageContent({ id }: { id: string }) {
     collection(firestore, 'videos'),
     where('status', '==', 'Approved'),
     where('__name__', '!=', id),
-    limit(10)
+    limit(5)
   );
   const { data: recommendedVideos, loading: recommendedLoading } = useCollection(recommendedVideosQuery);
 
@@ -68,19 +77,19 @@ function VideoPageContent({ id }: { id: string }) {
         summarizeContent({ videoTitle: video.title, videoDescription: video.description })
           .then(res => {
             updateDoc(videoRef, { summary: res.summary });
-          }).catch(() => {
-            // Do not show error to user, just fail silently
-            console.error("AI summary generation failed.");
+          }).catch((error) => {
+            console.error("AI summary generation failed:", error);
+            // Silently fail for AI features
           });
       }
-      
+
       if (!video.tags || video.tags.length === 0) {
         generateTags({ videoTitle: video.title, videoDescription: video.description })
           .then(res => {
-             updateDoc(videoRef, { tags: res.tags });
-          }).catch(() => {
-            // Do not show error to user, just fail silently
-            console.error("AI tag generation failed.");
+              updateDoc(videoRef, { tags: res.tags });
+          }).catch((error) => {
+            console.error("AI tag generation failed:", error);
+            // Silently fail for AI features
           });
       }
     }
@@ -182,7 +191,7 @@ function VideoPageContent({ id }: { id: string }) {
               <div className="flex items-center gap-3">
                 <Avatar>
                   <AvatarImage src={currentVideo.channelAvatarUrl} alt={currentVideo.channel} />
-                  <AvatarFallback>{currentVideo.channel.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{currentVideo.channel?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-lg font-semibold">{currentVideo.channel}</p>
@@ -201,7 +210,7 @@ function VideoPageContent({ id }: { id: string }) {
             </div>
             <Card className="mt-6 animate-fade-in-up" data-ai-hint="content summarization">
               <CardContent className="p-4">
-                <p className="font-semibold">{currentVideo.views.toLocaleString()} views &bull; {formatDistanceToNow(new Date(currentVideo.uploadedAt), { addSuffix: true })}</p>
+                <p className="font-semibold">{currentVideo.views.toLocaleString()} views &bull; {formatDistanceToNow(new Date(currentVideo.uploadedAt || Date.now()), { addSuffix: true })}</p>
                 <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{currentVideo.summary || <Skeleton className="h-16 w-full" />}</p>
                 <p className="mt-2 text-sm">{currentVideo.description}</p>
               </CardContent>
@@ -254,7 +263,7 @@ function VideoPageContent({ id }: { id: string }) {
 
 
 export default function VideoPage({ params }: { params: { id: string } }) {
-  const { id } = React.use(params);
+  const { id } = params;
   return (
     <Suspense fallback={<p>Loading video...</p>}>
       <VideoPageContent id={id} />

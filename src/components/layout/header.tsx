@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   ArrowLeft,
   Menu,
@@ -11,6 +11,7 @@ import {
   User,
   Shield,
   LogOut,
+  Home,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -35,16 +36,25 @@ import { Skeleton } from '../ui/skeleton';
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const { toggleSidebar } = useSidebar();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { user, loading } = useUser();
   const auth = useAuth();
+
+  // Show back button only on non-home pages
+  const showBackButton = pathname !== '/home';
   
   const handleLogout = async () => {
-    await signOut(auth);
-    router.push('/login');
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Handle logout error gracefully
+    }
   };
 
 
@@ -133,17 +143,31 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={() => router.back()}
-        aria-label="Go back"
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </Button>
+      {showBackButton ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => router.back()}
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => router.push('/home')}
+          aria-label="Go home"
+        >
+          <Home className="h-5 w-5" />
+        </Button>
+      )}
       <div className="hidden md:block">
-        <Logo />
+        <Link href="/home">
+          <Logo />
+        </Link>
       </div>
 
       <div className="relative flex-1 md:flex-initial md:ml-auto">
