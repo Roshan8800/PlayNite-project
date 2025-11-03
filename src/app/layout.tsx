@@ -4,6 +4,8 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AgeGate } from '@/components/age-gate';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { initializePerformanceMonitoring } from '@/lib/performance-monitoring';
+import { initializeOptimizations } from '@/lib/bundle-optimization';
 
 
 
@@ -62,7 +64,6 @@ export const metadata: Metadata = {
   verification: {
     google: 'your-google-verification-code',
     yandex: 'your-yandex-verification-code',
-    bing: 'your-bing-verification-code',
   },
 };
 
@@ -73,6 +74,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Initialize performance monitoring and optimizations
+  if (typeof window !== 'undefined') {
+    initializePerformanceMonitoring();
+    initializeOptimizations();
+  }
+
   return (
     <html lang="en" className="dark">
       <head>
@@ -82,6 +89,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap"
           rel="stylesheet"
         />
+        {/* Performance optimization hints */}
+        <link rel="dns-prefetch" href="//www.google-analytics.com" />
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
       </head>
       <body className="font-body antialiased">
         <ErrorBoundary>

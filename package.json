@@ -16,7 +16,7 @@
     "performance:optimize": "node performance-optimization.js",
     "seo:improve": "node seo-improvements.js",
     "optimize:all": "npm run performance:optimize && npm run seo:improve",
-    "lighthouse": "npx lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json --chrome-flags=\"--headless --no-sandbox --disable-dev-shm-usage\"",
+    "lighthouse": "npx lighthouse http://localhost:9002 --output=json --output-path=./lighthouse-report.json --chrome-flags=\"--headless --no-sandbox --disable-dev-shm-usage\"",
     "lighthouse:ci": "npm run lighthouse && cat lighthouse-report.json | jq '.categories | {performance: .performance.score, accessibility: .accessibility.score, \"best-practices\": .[\"best-practices\"].score, seo: .seo.score}'"
   },
   "dependencies": {
@@ -45,6 +45,7 @@
     "@radix-ui/react-toast": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.1.8",
     "@types/dompurify": "^3.0.5",
+    "@types/jsdom": "^27.0.0",
     "adm-zip": "^0.5.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -56,6 +57,7 @@
     "firebase": "^11.9.1",
     "firebase-admin": "^13.5.0",
     "genkit": "^1.20.0",
+    "jsdom": "^27.1.0",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
     "patch-package": "^8.0.0",
@@ -72,12 +74,25 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/plugin-transform-runtime": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-react": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "babel-loader": "^10.0.0",
     "genkit-cli": "^1.20.0",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "terser-webpack-plugin": "^5.3.14",
+    "ts-jest": "^29.4.5",
     "typescript": "^5"
   }
 }

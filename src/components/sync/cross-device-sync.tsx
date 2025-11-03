@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Monitor, Smartphone, Tv, Tablet, Wifi, WifiOff, Sync, CheckCircle } from 'lucide-react';
+import { Monitor, Smartphone, Tv, Tablet, Wifi, WifiOff, RefreshCw, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Device {
@@ -237,7 +237,7 @@ export function CrossDeviceSync({
           </span>
           {syncEnabled && (
             <Badge variant="outline" className="text-xs">
-              <Sync className="h-3 w-3 mr-1" />
+              <RefreshCw className="h-3 w-3 mr-1" />
               Sync {lastSyncTime ? `• ${Math.floor((Date.now() - lastSyncTime.getTime()) / 1000)}s ago` : ''}
             </Badge>
           )}
@@ -295,7 +295,7 @@ export function CrossDeviceSync({
                       onClick={() => syncFromDevice(device)}
                       disabled={!syncEnabled || !isOnline}
                     >
-                      <Sync className="h-3 w-3 mr-1" />
+                      <RefreshCw className="h-3 w-3 mr-1" />
                       Sync
                     </Button>
                   )}

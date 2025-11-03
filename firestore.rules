@@ -2,14 +2,44 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // Rate limiting helper
+    function isRateLimited(operation) {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data[operation] > timestamp.now();
+    }
+
+    // Input validation helpers
+    function isValidVideoData() {
+      return request.resource.data.keys().hasAll(['title', 'description', 'url', 'channelId']) &&
+             request.resource.data.title is string &&
+             request.resource.data.title.size() >= 1 &&
+             request.resource.data.title.size() <= 100 &&
+             request.resource.data.description is string &&
+             request.resource.data.description.size() <= 1000 &&
+             request.resource.data.url is string &&
+             request.resource.data.url.matches('https?://.*') &&
+             request.resource.data.channelId is string;
+    }
+
+    function isValidUserData() {
+      return request.resource.data.keys().hasAll(['email', 'displayName']) &&
+             request.resource.data.email is string &&
+             request.resource.data.email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$') &&
+             request.resource.data.displayName is string &&
+             request.resource.data.displayName.size() >= 2 &&
+             request.resource.data.displayName.size() <= 50;
+    }
+
     // Helper functions
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
-    
+
     function isAdmin() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
     }
 
@@ -18,15 +48,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Videos: Public read for approved, restricted write
+    // Rate limits collection - only admins can manage
+    match /rate_limits/{userId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Videos: Public read for approved, restricted write with validation
     match /videos/{videoId} {
       allow get: if resource.data.status == 'Approved';
       allow list: if true;
-      allow create: if request.auth != null && request.resource.data.channelId == request.auth.uid;
-      allow update: if request.auth != null && (
-                      (resource.data.channelId == request.auth.uid && !(request.resource.data.status != resource.data.status)) || // Owners can update, but not change status
-                      isAdmin() // Admins can update anything
-                    );
+      allow create: if request.auth != null &&
+                       !isRateLimited('create_video') &&
+                       isValidVideoData() &&
+                       request.resource.data.channelId == request.auth.uid;
+      allow update: if request.auth != null &&
+                       !isRateLimited('update_video') &&
+                       (resource.data.channelId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
@@ -35,22 +72,31 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
-    
-    // Reports: Admin read/write, authenticated user create
+
+    // Reports: Admin read/write, authenticated user create with rate limiting
     match /reports/{reportId} {
       allow read, write: if isAdmin();
-      allow create: if request.auth != null && request.resource.data.reportedByUid == request.auth.uid;
+      allow create: if request.auth != null &&
+                       !isRateLimited('create_report') &&
+                       request.resource.data.reportedByUid == request.auth.uid;
     }
 
-    // Users can read public profiles, but only write to their own. Admins can write to any.
+    // Users: Public read for basic info, write with validation
     match /users/{userId} {
       allow read: if true;
-      allow write: if isOwner(userId) || isAdmin();
+      allow write: if (isOwner(userId) || isAdmin()) &&
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || isAdmin()) &&
+                       isValidUserData();
+    }
+
+    // Analytics collection - read/write for authenticated users
+    match /analytics/{documentId} {
+      allow read, write: if request.auth != null;
     }
 
     // Users can fully control their own subcollections (history, likes, etc.)
     match /users/{userId}/{collection}/{documentId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && !isRateLimited('user_action');
     }
   }
 }

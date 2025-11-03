@@ -34,9 +34,64 @@ const VideoPlayer = dynamic(() => import('@/components/video-player').then(mod =
   loading: () => <Skeleton className="aspect-video w-full" />,
   ssr: false,
 });
+
+// Video analytics hook for monitoring playback
+const useVideoAnalytics = (videoId: string) => {
+  const firestore = useFirestore();
+  const [analytics, setAnalytics] = useState({
+    views: 0,
+    watchTime: 0,
+    completionRate: 0,
+    errorCount: 0,
+  });
+
+  useEffect(() => {
+    // Fetch initial analytics
+    const fetchAnalytics = async () => {
+      try {
+        const analyticsDoc = await getDoc(doc(firestore, 'videos', videoId, 'analytics', 'summary'));
+        if (analyticsDoc.exists()) {
+          setAnalytics(analyticsDoc.data() as typeof analytics);
+        }
+      } catch (error) {
+        console.error('Failed to fetch video analytics:', error);
+      }
+    };
+
+    fetchAnalytics();
+  }, [videoId, firestore]);
+
+  const updateAnalytics = useCallback(async (data: Partial<typeof analytics>) => {
+    try {
+      const analyticsRef = doc(firestore, 'videos', videoId, 'analytics', 'summary');
+      await updateDoc(analyticsRef, {
+        ...data,
+        lastUpdated: serverTimestamp()
+      });
+      setAnalytics(prev => ({ ...prev, ...data }));
+    } catch (error: unknown) {
+      console.error('Failed to update video analytics:', error);
+      // If document doesn't exist, create it
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'not-found') {
+        try {
+          const analyticsRef = doc(firestore, 'videos', videoId, 'analytics', 'summary');
+          await setDoc(analyticsRef, {
+            ...data,
+            lastUpdated: serverTimestamp()
+          });
+          setAnalytics(prev => ({ ...prev, ...data }));
+        } catch (createError) {
+          console.error('Failed to create analytics document:', createError);
+        }
+      }
+    }
+  }, [videoId, firestore]);
+
+  return { analytics, updateAnalytics };
+};
 import { useDoc, useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, query, where, limit, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import React, { useEffect, useState, Suspense } from 'react';
+import { collection, doc, query, where, limit, setDoc, serverTimestamp, updateDoc, getDoc } from 'firebase/firestore';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +103,7 @@ function VideoPageContent({ id }: { id: string }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const { analytics, updateAnalytics } = useVideoAnalytics(id);
 
   const videoRef = doc(firestore, 'videos', id);
   const { data: video, loading: videoLoading } = useDoc(videoRef);
@@ -187,7 +243,7 @@ function VideoPageContent({ id }: { id: string }) {
     <div className="container mx-auto max-w-7xl px-0 py-0 animate-fade-in">
       <div className="flex flex-col gap-8 lg:flex-row">
         <div className="w-full lg:w-2/3">
-          <VideoPlayer video={currentVideo} />
+          <VideoPlayer video={currentVideo} enableAnalytics={true} />
           <div className="mt-4">
             <h1 className="text-3xl font-headline font-bold">{currentVideo.title}</h1>
             <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">

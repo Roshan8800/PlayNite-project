@@ -19,7 +19,27 @@ export default function ParentalControlsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<{
+    enabled: boolean;
+    pinCode: string;
+    ageRestriction: number;
+    blockMatureContent: boolean;
+    blockViolence: boolean;
+    blockAdultThemes: boolean;
+    timeLimits: {
+      enabled: boolean;
+      dailyLimit: number;
+      sessionLimit: number;
+    };
+    contentFilters: {
+      keywords: string[];
+      channels: string[];
+    };
+    monitoring: {
+      viewReports: boolean;
+      activityLogs: boolean;
+    };
+  }>({
     enabled: false,
     pinCode: '',
     ageRestriction: 13,

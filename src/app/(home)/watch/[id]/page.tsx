@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { LazyIframe } from '@/components/lazy-iframe';
 import { summarizeContent } from '@/ai/flows/content-summarization';
 import { generateTags } from '@/ai/flows/ai-tag-generation';
 import { contentRecommendationEngine } from '@/ai/flows/content-recommendation-engine';
@@ -22,6 +21,50 @@ const VideoCard = dynamic(() => import('@/components/video-card').then(mod => ({
   loading: () => <Skeleton className="h-24 w-40" />,
   ssr: false,
 });
+const VideoPlayer = dynamic(() => import('@/components/video-player').then(mod => ({ default: mod.VideoPlayer })), {
+  loading: () => <Skeleton className="aspect-video w-full" />,
+  ssr: false,
+});
+
+// Video analytics hook for monitoring playback
+const useVideoAnalytics = (videoId: string, firestore: any) => {
+  const [analytics, setAnalytics] = useState({
+    views: 0,
+    watchTime: 0,
+    completionRate: 0,
+    errorCount: 0,
+  });
+
+  useEffect(() => {
+    // Fetch initial analytics
+    const fetchAnalytics = async () => {
+      try {
+        const analyticsDoc = await getDoc(doc(firestore, 'videos', videoId, 'analytics', 'summary'));
+        if (analyticsDoc.exists()) {
+          setAnalytics(analyticsDoc.data() as typeof analytics);
+        }
+      } catch (error) {
+        console.error('Failed to fetch video analytics:', error);
+      }
+    };
+
+    fetchAnalytics();
+  }, [videoId, firestore]);
+
+  const updateAnalytics = useCallback(async (data: Partial<typeof analytics>) => {
+    try {
+      await updateDoc(doc(firestore, 'videos', videoId, 'analytics', 'summary'), {
+        ...data,
+        lastUpdated: serverTimestamp()
+      }, { merge: true });
+      setAnalytics(prev => ({ ...prev, ...data }));
+    } catch (error) {
+      console.error('Failed to update video analytics:', error);
+    }
+  }, [videoId, firestore]);
+
+  return { analytics, updateAnalytics };
+};
 import {
   Bell,
   Download,
@@ -34,7 +77,8 @@ import {
 } from 'lucide-react';
 import { useDoc, useCollection, useFirestore, useUser } from '@/firebase';
 import { collection, doc, query, where, limit, setDoc, serverTimestamp, updateDoc, getDocs, getDoc, addDoc } from 'firebase/firestore';
-import React, { useEffect, useState, Suspense } from 'react';
+import Link from 'next/link';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +96,7 @@ function WatchPageContent({ id }: { id: string }) {
   const router = useRouter();
   const [userRating, setUserRating] = useState<'like' | 'dislike' | null>(null);
   const [commentText, setCommentText] = useState('');
+  const { analytics, updateAnalytics } = useVideoAnalytics(id, firestore);
 
   const videoRef = doc(firestore, 'videos', id);
   const { data: video, loading: videoLoading, error: videoError } = useDoc(videoRef);
@@ -464,19 +509,7 @@ function WatchPageContent({ id }: { id: string }) {
       <div className="container mx-auto max-w-7xl px-0 py-0 animate-fade-in">
         <div className="flex flex-col gap-8 lg:flex-row">
           <div className="w-full lg:w-2/3">
-            <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
-              {currentVideo.iframe_code ? (
-                <LazyIframe
-                  srcDoc={currentVideo.iframe_code}
-                  title={currentVideo.title}
-                  className="w-full h-full"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white">
-                  Video not available
-                </div>
-              )}
-            </div>
+            <VideoPlayer video={currentVideo} enableAnalytics={true} />
             <div className="mt-4">
               <h1 className="text-3xl font-headline font-bold">{currentVideo.title}</h1>
               <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">

@@ -53,6 +53,18 @@ export async function fetchVideosPaginated(page = 1, pageSize = 20, filters = {}
       constraints.push(where('category', '==', filters.category));
     }
 
+    if (filters.categories && filters.categories.length > 0) {
+      constraints.push(where('categories', 'array-contains-any', filters.categories));
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      constraints.push(where('tags', 'array-contains-any', filters.tags));
+    }
+
+    if (filters.pornstars && filters.pornstars.length > 0) {
+      constraints.push(where('pornstars', 'array-contains-any', filters.pornstars));
+    }
+
     if (filters.ageRestriction !== undefined) {
       constraints.push(where('ageRestriction', '<=', filters.ageRestriction));
     }

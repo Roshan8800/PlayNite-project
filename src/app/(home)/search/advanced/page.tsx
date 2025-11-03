@@ -1,25 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Pagination } from '@/components/ui/pagination';
-import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, where, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
-import { format } from 'date-fns';
-import { CalendarIcon, Filter, Search, X } from 'lucide-react';
+import { Filter, Search } from 'lucide-react';
 import { usePagination } from '@/hooks/use-pagination';
 import { fetchVideosPaginated } from '@/lib/videos';
+import { useVideoFilters } from '@/hooks/use-video-filters';
+import { VideoFilters } from '@/components/video-filters';
 import dynamic from 'next/dynamic';
 import type { Video } from '@/lib/types';
 
@@ -30,36 +20,8 @@ const VideoCard = dynamic(() => import('@/components/video-card').then(mod => ({
 });
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface SearchFilters {
-  query: string;
-  category: string;
-  duration: string;
-  quality: string;
-  uploadedAfter: Date | undefined;
-  uploadedBefore: Date | undefined;
-  minViews: number;
-  maxViews: number;
-  sortBy: string;
-  tags: string[];
-}
-
 export default function AdvancedSearchPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const firestore = useFirestore();
-
-  const [filters, setFilters] = useState<SearchFilters>({
-    query: searchParams.get('q') || '',
-    category: searchParams.get('category') || '',
-    duration: searchParams.get('duration') || '',
-    quality: searchParams.get('quality') || '',
-    uploadedAfter: searchParams.get('uploadedAfter') ? new Date(searchParams.get('uploadedAfter')!) : undefined,
-    uploadedBefore: searchParams.get('uploadedBefore') ? new Date(searchParams.get('uploadedBefore')!) : undefined,
-    minViews: parseInt(searchParams.get('minViews') || '0'),
-    maxViews: parseInt(searchParams.get('maxViews') || '1000000'),
-    sortBy: searchParams.get('sortBy') || 'relevance',
-    tags: searchParams.get('tags')?.split(',') || [],
-  });
+  const videoFilters = useVideoFilters({ syncWithUrl: true });
 
   const [videos, setVideos] = useState<Video[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -72,150 +34,87 @@ export default function AdvancedSearchPage() {
     syncWithUrl: true,
   });
 
-  // Available categories and tags
-  const categories = ['Entertainment', 'Education', 'Music', 'Gaming', 'Sports', 'News', 'Technology', 'Comedy'];
+  // Available options for filters
+  const availableCategories = ['Entertainment', 'Education', 'Music', 'Gaming', 'Sports', 'News', 'Technology', 'Comedy'];
   const availableTags = ['HD', '4K', 'Live', 'Trending', 'New', 'Popular', 'Educational', 'Funny', 'Music Video', 'Tutorial'];
+  const availablePornstars = ['Pornstar1', 'Pornstar2', 'Pornstar3']; // This should be fetched from API in production
 
-  const buildSearchQuery = useCallback(() => {
-    const constraints = [];
-
-    // Text search (basic implementation - in production, use Algolia or similar)
-    if (filters.query) {
-      // This is a simplified approach - real implementation would use full-text search
-      constraints.push(where('title', '>=', filters.query));
-      constraints.push(where('title', '<=', filters.query + '\uf8ff'));
-    }
-
-    // Category filter
-    if (filters.category) {
-      constraints.push(where('category', '==', filters.category));
-    }
-
-    // Duration filter
-    if (filters.duration) {
-      switch (filters.duration) {
-        case 'short':
-          constraints.push(where('duration', '<=', '00:04:00'));
-          break;
-        case 'medium':
-          constraints.push(where('duration', '>=', '00:04:01'));
-          constraints.push(where('duration', '<=', '00:20:00'));
-          break;
-        case 'long':
-          constraints.push(where('duration', '>=', '00:20:01'));
-          break;
-      }
-    }
-
-    // Views filter
-    if (filters.minViews > 0) {
-      constraints.push(where('views', '>=', filters.minViews));
-    }
-    if (filters.maxViews < 1000000) {
-      constraints.push(where('views', '<=', filters.maxViews));
-    }
-
-    // Date filters
-    if (filters.uploadedAfter) {
-      constraints.push(where('uploadedAt', '>=', filters.uploadedAfter.toISOString()));
-    }
-    if (filters.uploadedBefore) {
-      constraints.push(where('uploadedBefore', '<=', filters.uploadedBefore.toISOString()));
-    }
-
-    // Status filter (only approved videos)
-    constraints.push(where('status', '==', 'Approved'));
-
-    return constraints;
-  }, [filters]);
-
-  const performSearch = useCallback(async (reset = false) => {
+  const performSearch = useCallback(async () => {
     setLoading(true);
 
     try {
-      const constraints = buildSearchQuery();
-      let searchQuery = query(collection(firestore, 'videos'), ...constraints);
+      // Build filters for paginated search
+      const searchFilters: any = {
+        status: 'Approved',
+        sortBy: videoFilters.filters.sortBy === 'date' ? 'uploadedAt' : videoFilters.filters.sortBy === 'views' ? 'views' : 'views',
+        sortOrder: 'desc',
+      };
 
-      // Sorting
-      switch (filters.sortBy) {
-        case 'views':
-          searchQuery = query(searchQuery, orderBy('views', 'desc'));
-          break;
-        case 'date':
-          searchQuery = query(searchQuery, orderBy('uploadedAt', 'desc'));
-          break;
-        case 'relevance':
-        default:
-          searchQuery = query(searchQuery, orderBy('views', 'desc'));
-          break;
+      // Apply filters
+      if (videoFilters.filters.category) {
+        searchFilters.category = videoFilters.filters.category;
       }
 
-      if (!reset && lastDoc) {
-        searchQuery = query(searchQuery, startAfter(lastDoc));
-      } else {
-        searchQuery = query(searchQuery, limit(20));
+      if (videoFilters.filters.categories.length > 0) {
+        searchFilters.categories = videoFilters.filters.categories;
       }
 
-      const snapshot = await getDocs(searchQuery);
-      const newVideos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Video[];
-
-      // Filter by tags (client-side since Firestore doesn't support array contains easily)
-      let filteredVideos = newVideos;
-      if (filters.tags.length > 0) {
-        filteredVideos = newVideos.filter(video =>
-          filters.tags.some(tag => video.tags?.includes(tag))
-        );
+      if (videoFilters.filters.tags.length > 0) {
+        searchFilters.tags = videoFilters.filters.tags;
       }
 
-      setVideos(prev => reset ? filteredVideos : [...prev, ...filteredVideos]);
-      setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-      setHasMore(snapshot.docs.length === 20);
+      if (videoFilters.filters.pornstars.length > 0) {
+        searchFilters.pornstars = videoFilters.filters.pornstars;
+      }
+
+      // Apply duration filter
+      if (videoFilters.filters.duration) {
+        if (videoFilters.filters.duration === 'short') {
+          searchFilters.maxDuration = 240; // 4 minutes
+        } else if (videoFilters.filters.duration === 'medium') {
+          searchFilters.minDuration = 240; // 4 minutes
+          searchFilters.maxDuration = 1200; // 20 minutes
+        } else if (videoFilters.filters.duration === 'long') {
+          searchFilters.minDuration = 1200; // 20 minutes
+        }
+      }
+
+      // Apply views filter
+      if (videoFilters.filters.minViews > 0) {
+        searchFilters.minViews = videoFilters.filters.minViews;
+      }
+      if (videoFilters.filters.maxViews < 1000000) {
+        searchFilters.maxViews = videoFilters.filters.maxViews;
+      }
+
+      // Apply date filters
+      if (videoFilters.filters.uploadedAfter) {
+        searchFilters.uploadedAfter = videoFilters.filters.uploadedAfter.toISOString();
+      }
+      if (videoFilters.filters.uploadedBefore) {
+        searchFilters.uploadedBefore = videoFilters.filters.uploadedBefore.toISOString();
+      }
+
+      const { videos: searchResults, pagination: paginationInfo } = await fetchVideosPaginated(
+        pagination.currentPage,
+        pagination.pageSize,
+        searchFilters
+      );
+
+      setVideos(searchResults as Video[]);
+      setTotalItems(paginationInfo.totalItems);
     } catch (error) {
       console.error('Search error:', error);
+      setVideos([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
-  }, [filters, firestore, lastDoc, buildSearchQuery]);
+  }, [videoFilters.filters, pagination.currentPage, pagination.pageSize]);
 
   useEffect(() => {
-    performSearch(true);
+    performSearch();
   }, [performSearch]);
-
-  const handleFilterChange = (key: keyof SearchFilters, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-
-  const addTag = (tag: string) => {
-    if (!filters.tags.includes(tag)) {
-      setFilters(prev => ({ ...prev, tags: [...prev.tags, tag] }));
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setFilters(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      query: '',
-      category: '',
-      duration: '',
-      quality: '',
-      uploadedAfter: undefined,
-      uploadedBefore: undefined,
-      minViews: 0,
-      maxViews: 1000000,
-      sortBy: 'relevance',
-      tags: [],
-    });
-  };
-
-  const activeFiltersCount = Object.entries(filters).reduce((count, [key, value]) => {
-    if (key === 'query' || key === 'sortBy') return count;
-    if (Array.isArray(value) && value.length > 0) return count + 1;
-    if (value && value !== '' && value !== 0 && value !== 1000000) return count + 1;
-    return count;
-  }, 0);
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
@@ -233,9 +132,9 @@ export default function AdvancedSearchPage() {
         >
           <Filter className="h-4 w-4 mr-2" />
           Filters
-          {activeFiltersCount > 0 && (
+          {videoFilters.activeFiltersCount > 0 && (
             <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
-              {activeFiltersCount}
+              {videoFilters.activeFiltersCount}
             </Badge>
           )}
         </Button>
@@ -246,14 +145,16 @@ export default function AdvancedSearchPage() {
         <CardContent className="p-6">
           <div className="flex gap-4">
             <div className="flex-1">
-              <Input
+              <input
+                type="text"
                 placeholder="Search for videos..."
-                value={filters.query}
-                onChange={(e) => handleFilterChange('query', e.target.value)}
-                className="text-lg"
+                value={videoFilters.filters.query}
+                onChange={(e) => videoFilters.updateFilters({ ...videoFilters.filters, query: e.target.value })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-lg ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={loading}
               />
             </div>
-            <Button onClick={() => performSearch(true)} disabled={loading}>
+            <Button onClick={performSearch} disabled={loading}>
               <Search className="h-4 w-4 mr-2" />
               Search
             </Button>
@@ -264,143 +165,15 @@ export default function AdvancedSearchPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Filters Sidebar */}
         {showFilters && (
-          <div className="lg:col-span-1 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Filters</CardTitle>
-                <CardDescription>Refine your search results</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Category */}
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select value={filters.category} onValueChange={(value) => handleFilterChange('category', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All categories</SelectItem>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Duration */}
-                <div className="space-y-2">
-                  <Label>Duration</Label>
-                  <Select value={filters.duration} onValueChange={(value) => handleFilterChange('duration', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Any duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Any duration</SelectItem>
-                      <SelectItem value="short">Short (< 4 minutes)</SelectItem>
-                      <SelectItem value="medium">Medium (4-20 minutes)</SelectItem>
-                      <SelectItem value="long">Long (> 20 minutes)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Views Range */}
-                <div className="space-y-2">
-                  <Label>Views Range</Label>
-                  <div className="px-2">
-                    <Slider
-                      value={[filters.minViews, filters.maxViews]}
-                      onValueChange={([min, max]) => {
-                        handleFilterChange('minViews', min);
-                        handleFilterChange('maxViews', max);
-                      }}
-                      max={1000000}
-                      step={1000}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-sm text-muted-foreground mt-1">
-                      <span>{filters.minViews.toLocaleString()}</span>
-                      <span>{filters.maxViews.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Upload Date */}
-                <div className="space-y-2">
-                  <Label>Upload Date</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start text-left font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {filters.uploadedAfter ? format(filters.uploadedAfter, 'PPP') : 'From'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={filters.uploadedAfter}
-                          onSelect={(date) => handleFilterChange('uploadedAfter', date)}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start text-left font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {filters.uploadedBefore ? format(filters.uploadedBefore, 'PPP') : 'To'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={filters.uploadedBefore}
-                          onSelect={(date) => handleFilterChange('uploadedBefore', date)}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {/* Tags */}
-                <div className="space-y-2">
-                  <Label>Tags</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {availableTags.map(tag => (
-                      <Badge
-                        key={tag}
-                        variant={filters.tags.includes(tag) ? 'default' : 'outline'}
-                        className="cursor-pointer"
-                        onClick={() => filters.tags.includes(tag) ? removeTag(tag) : addTag(tag)}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sort By */}
-                <div className="space-y-2">
-                  <Label>Sort By</Label>
-                  <Select value={filters.sortBy} onValueChange={(value) => handleFilterChange('sortBy', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="relevance">Relevance</SelectItem>
-                      <SelectItem value="views">Most Viewed</SelectItem>
-                      <SelectItem value="date">Most Recent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button variant="outline" onClick={clearFilters} className="w-full">
-                  <X className="h-4 w-4 mr-2" />
-                  Clear Filters
-                </Button>
-              </CardContent>
-            </Card>
+          <div className="lg:col-span-1">
+            <VideoFilters
+              filters={videoFilters.filters}
+              onFiltersChange={videoFilters.updateFilters}
+              availableCategories={availableCategories}
+              availableTags={availableTags}
+              availablePornstars={availablePornstars}
+              loading={loading}
+            />
           </div>
         )}
 
@@ -440,15 +213,17 @@ export default function AdvancedSearchPage() {
                 ))}
               </div>
 
-              {hasMore && (
-                <div className="flex justify-center mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={() => performSearch(false)}
-                    disabled={loading}
-                  >
-                    {loading ? 'Loading...' : 'Load More Results'}
-                  </Button>
+              {totalItems > 0 && (
+                <div className="mt-8">
+                  <Pagination
+                    currentPage={pagination.currentPage}
+                    totalPages={pagination.totalPages}
+                    onPageChange={pagination.setPage}
+                    showPageSizeSelector={true}
+                    pageSize={pagination.pageSize}
+                    pageSizeOptions={pagination.pageSizeOptions}
+                    onPageSizeChange={pagination.setPageSize}
+                  />
                 </div>
               )}
             </>

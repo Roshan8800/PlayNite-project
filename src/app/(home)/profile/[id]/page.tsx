@@ -161,6 +161,50 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
                                 <CardTitle>About</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4 text-sm">
+                                <div className="text-center mb-6">
+                                    <div className="flex justify-center mb-4">
+                                        <img
+                                            src="/logo.png"
+                                            alt="PlayNite Logo"
+                                            className="h-16 w-16 object-contain"
+                                            onError={(e) => {
+                                                // Fallback to text logo if image fails to load
+                                                e.currentTarget.style.display = 'none';
+                                                const fallback = document.createElement('div');
+                                                fallback.className = 'h-16 w-16 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl';
+                                                fallback.textContent = 'PN';
+                                                e.currentTarget.parentNode?.appendChild(fallback);
+                                            }}
+                                        />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-primary">PlayNite</h3>
+                                    <p className="text-sm text-muted-foreground">Advanced Video Streaming Platform</p>
+                                </div>
+
+                                <Separator className="my-4" />
+
+                                <div className="text-center">
+                                    <p className="font-semibold mb-2">PlayNite</p>
+                                    <p className="text-xs text-muted-foreground mb-4">Developed by the Sahu Family</p>
+
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <UserIcon className="w-4 h-4 text-muted-foreground"/>
+                                            <span className="text-sm">Roshan Sahu</span>
+                                        </div>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <UserIcon className="w-4 h-4 text-muted-foreground"/>
+                                            <span className="text-sm">Papun Sahu</span>
+                                        </div>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <UserIcon className="w-4 h-4 text-muted-foreground"/>
+                                            <span className="text-sm">Rohan Sahu</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator className="my-4" />
+
                                 {(profileUser as any).bio && (
                                     <div>
                                         <p className="font-semibold mb-1">Bio</p>

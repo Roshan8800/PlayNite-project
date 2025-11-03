@@ -3,18 +3,19 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { VideoCard } from '@/components/video-card';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search as SearchIcon, Filter, SortAsc, SortDesc } from 'lucide-react';
+import { Search as SearchIcon, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { fetchVideosPaginated } from '@/lib/videos';
+import { useVideoFilters } from '@/hooks/use-video-filters';
+import { VideoFilters } from '@/components/video-filters';
 
 function SearchResults() {
   const searchParams = useSearchParams();
@@ -25,8 +26,6 @@ function SearchResults() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'relevance' | 'newest' | 'oldest' | 'views'>('relevance');
-  const [filterBy, setFilterBy] = useState<'all' | 'short' | 'long'>('all');
   const [showFilters, setShowFilters] = useState(false);
 
   const pagination = usePagination({
@@ -35,54 +34,26 @@ function SearchResults() {
     syncWithUrl: true,
   });
 
+  // Initialize video filters with basic search query
+  const videoFilters = useVideoFilters({
+    syncWithUrl: true,
+    defaultFilters: {
+      query: queryParam,
+      sortBy: 'relevance',
+    },
+  });
+
+  // Available options for filters
+  const availableCategories = ['Entertainment', 'Education', 'Music', 'Gaming', 'Sports', 'News', 'Technology', 'Comedy'];
+  const availableTags = ['HD', '4K', 'Live', 'Trending', 'New', 'Popular', 'Educational', 'Funny', 'Music Video', 'Tutorial'];
+  const availablePornstars = ['Pornstar1', 'Pornstar2', 'Pornstar3']; // This should be fetched from API in production
+
   // Check parental controls and age restrictions
   const isRestrictedContent = user?.parentalControlsEnabled && user?.ageRestriction && user.ageRestriction < 18;
 
-  const applyFiltersAndSort = (videos: Video[]): Video[] => {
-    let filtered = videos;
-
-    // Apply duration filter
-    if (filterBy !== 'all') {
-      filtered = filtered.filter(video => {
-        const duration = parseInt(video.duration || '0');
-        if (filterBy === 'short') return duration < 300; // Less than 5 minutes
-        if (filterBy === 'long') return duration > 1800; // More than 30 minutes
-        return true;
-      });
-    }
-
-    // Apply parental controls filter
-    if (isRestrictedContent) {
-      filtered = filtered.filter(video => {
-        const videoAgeRestriction = video.ageRestriction || 18;
-        return user.ageRestriction && user.ageRestriction >= videoAgeRestriction;
-      });
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime();
-        case 'oldest':
-          return new Date(a.uploadedAt || 0).getTime() - new Date(b.uploadedAt || 0).getTime();
-        case 'views':
-          return (b.views || 0) - (a.views || 0);
-        case 'relevance':
-        default:
-          // For relevance, prioritize videos with higher ratings and more recent uploads
-          const aScore = (a.rating || 0) * 0.7 + (new Date(a.uploadedAt || 0).getTime() / 1000000000) * 0.3;
-          const bScore = (b.rating || 0) * 0.7 + (new Date(b.uploadedAt || 0).getTime() / 1000000000) * 0.3;
-          return bScore - aScore;
-      }
-    });
-
-    return filtered;
-  };
-
   useEffect(() => {
     const fetchVideos = async () => {
-      if (!queryParam) {
+      if (!videoFilters.filters.query) {
         setFilteredVideos([]);
         setTotalItems(0);
         setLoading(false);
@@ -95,8 +66,8 @@ function SearchResults() {
         // Build filters for paginated search
         const filters: any = {
           status: 'Approved',
-          sortBy: sortBy === 'relevance' ? 'views' : sortBy === 'newest' ? 'uploadedAt' : sortBy === 'oldest' ? 'uploadedAt' : 'views',
-          sortOrder: sortBy === 'oldest' ? 'asc' : 'desc',
+          sortBy: videoFilters.filters.sortBy === 'date' ? 'uploadedAt' : videoFilters.filters.sortBy === 'views' ? 'views' : 'views',
+          sortOrder: 'desc',
         };
 
         // Add parental control filters if needed
@@ -104,17 +75,51 @@ function SearchResults() {
           filters.ageRestriction = user.ageRestriction || 18;
         }
 
-        // Add duration filter
-        if (filterBy !== 'all') {
-          if (filterBy === 'short') {
-            filters.maxDuration = 300; // 5 minutes
-          } else if (filterBy === 'long') {
-            filters.minDuration = 1800; // 30 minutes
+        // Apply category filter
+        if (videoFilters.filters.category) {
+          filters.category = videoFilters.filters.category;
+        }
+
+        if (videoFilters.filters.categories.length > 0) {
+          filters.categories = videoFilters.filters.categories;
+        }
+
+        if (videoFilters.filters.tags.length > 0) {
+          filters.tags = videoFilters.filters.tags;
+        }
+
+        if (videoFilters.filters.pornstars.length > 0) {
+          filters.pornstars = videoFilters.filters.pornstars;
+        }
+
+        // Apply duration filter
+        if (videoFilters.filters.duration) {
+          if (videoFilters.filters.duration === 'short') {
+            filters.maxDuration = 240; // 4 minutes
+          } else if (videoFilters.filters.duration === 'medium') {
+            filters.minDuration = 240; // 4 minutes
+            filters.maxDuration = 1200; // 20 minutes
+          } else if (videoFilters.filters.duration === 'long') {
+            filters.minDuration = 1200; // 20 minutes
           }
         }
 
-        // For text search, we'll use a simplified approach since Firestore doesn't support full-text search natively
-        // In production, you'd want to use Algolia or similar service
+        // Apply views filter
+        if (videoFilters.filters.minViews > 0) {
+          filters.minViews = videoFilters.filters.minViews;
+        }
+        if (videoFilters.filters.maxViews < 1000000) {
+          filters.maxViews = videoFilters.filters.maxViews;
+        }
+
+        // Apply date filters
+        if (videoFilters.filters.uploadedAfter) {
+          filters.uploadedAfter = videoFilters.filters.uploadedAfter.toISOString();
+        }
+        if (videoFilters.filters.uploadedBefore) {
+          filters.uploadedBefore = videoFilters.filters.uploadedBefore.toISOString();
+        }
+
         const { videos: searchResults, pagination: paginationInfo } = await fetchVideosPaginated(
           pagination.currentPage,
           pagination.pageSize,
@@ -123,13 +128,10 @@ function SearchResults() {
 
         // Client-side filtering for search query (simplified - in production use proper search service)
         let filtered = (searchResults as Video[]).filter(video =>
-          video.title?.toLowerCase().includes(queryParam.toLowerCase()) ||
-          video.description?.toLowerCase().includes(queryParam.toLowerCase()) ||
-          video.tags?.some((tag: string) => tag.toLowerCase().includes(queryParam.toLowerCase()))
+          video.title?.toLowerCase().includes(videoFilters.filters.query.toLowerCase()) ||
+          video.description?.toLowerCase().includes(videoFilters.filters.query.toLowerCase()) ||
+          video.tags?.some((tag: string) => tag.toLowerCase().includes(videoFilters.filters.query.toLowerCase()))
         );
-
-        // Apply client-side sorting if needed
-        filtered = applyFiltersAndSort(filtered);
 
         setFilteredVideos(filtered);
         setTotalItems(paginationInfo.totalItems);
@@ -143,7 +145,7 @@ function SearchResults() {
       }
     };
     fetchVideos();
-  }, [queryParam, firestore, sortBy, filterBy, user, isRestrictedContent, pagination.currentPage, pagination.pageSize]);
+  }, [videoFilters.filters, firestore, user, isRestrictedContent, pagination.currentPage, pagination.pageSize]);
 
   return (
     <div className="space-y-8">

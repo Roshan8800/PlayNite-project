@@ -2,6 +2,14 @@
 # https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
-  maxInstances: 1
+  # Auto-scaling configuration for better performance
+  minInstances: 1
+  maxInstances: 10
+  concurrency: 80
+
+# CDN configuration for global distribution
+cdn:
+  enabled: true
+  cachePolicy:
+    maxAge: 31536000  # 1 year for static assets
+    staleWhileRevalidate: 86400  # 1 day

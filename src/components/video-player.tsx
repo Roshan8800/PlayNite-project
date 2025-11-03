@@ -20,7 +20,15 @@ import {
 } from 'lucide-react';
 import { SmartSkipDetector } from './smart-skip/smart-skip-detector';
 import { CrossDeviceSync } from './sync/cross-device-sync';
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { VideoLoader, type VideoSource, type VideoError } from './video-loader';
+import dynamic from 'next/dynamic';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+
+// Dynamic import for LazyIframe to avoid SSR issues
+const LazyIframe = dynamic(() => import('@/components/lazy-iframe').then(mod => ({ default: mod.LazyIframe })), {
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-black flex items-center justify-center text-white">Loading iframe...</div>
+});
 import { useInView } from 'react-intersection-observer';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
@@ -39,11 +47,12 @@ import {
 interface VideoPlayerProps {
   video: Video;
   className?: string;
+  enableAnalytics?: boolean;
 }
 
-export function VideoPlayer({ video, className }: VideoPlayerProps) {
+export function VideoPlayer({ video, className, enableAnalytics = true }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const { ref: inViewRef, inView } = useInView({
     threshold: 0.1,
     triggerOnce: true,
@@ -62,9 +71,17 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
   const [seekIndicator, setSeekIndicator] = useState<'forward' | 'backward' | null>(null);
   const [gestureStartY, setGestureStartY] = useState<number | null>(null);
   const [gestureStartX, setGestureStartX] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 3;
+  const [error, setError] = useState<VideoError | null>(null);
+  const [currentVideoSource, setCurrentVideoSource] = useState<VideoSource | null>(null);
+  const [analytics, setAnalytics] = useState({
+    playCount: 0,
+    totalWatchTime: 0,
+    lastPlayTime: null as Date | null,
+    errorCount: 0,
+    bufferingCount: 0,
+    qualityChanges: 0,
+    lastError: null as VideoError | null,
+  });
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [availableSubtitles, setAvailableSubtitles] = useState<string[]>([]);
   const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
@@ -98,7 +115,52 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapRef = useRef<number>(0);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const watchStartTimeRef = useRef<number | null>(null);
+  const bufferingStartTimeRef = useRef<number | null>(null);
   const { toast } = useToast();
+
+  // Create video sources from video data with enhanced validation
+  const videoSources = useMemo((): VideoSource[] => {
+    const sources: VideoSource[] = [];
+
+    // Primary source: videoUrl (highest priority)
+    if (video.videoUrl && typeof video.videoUrl === 'string' && video.videoUrl.trim()) {
+      try {
+        new URL(video.videoUrl); // Validate URL format
+        sources.push({
+          type: 'url',
+          url: video.videoUrl.trim(),
+          title: video.title
+        });
+      } catch {
+        console.warn('Invalid video URL format:', video.videoUrl);
+      }
+    }
+
+    // Secondary source: iframe_code (fallback)
+    if (video.iframe_code && typeof video.iframe_code === 'string' && video.iframe_code.trim()) {
+      // Basic iframe validation
+      const iframeCode = video.iframe_code.trim();
+      if (iframeCode.includes('<iframe') && iframeCode.includes('src=')) {
+        sources.push({
+          type: 'iframe',
+          iframeCode: iframeCode,
+          title: video.title
+        });
+      } else {
+        console.warn('Invalid iframe code format');
+      }
+    }
+
+    // Log source availability for debugging
+    if (sources.length === 0) {
+      console.warn('No valid video sources found for video:', video.id);
+    } else {
+      console.log(`Found ${sources.length} valid video sources for video:`, video.id);
+    }
+
+    return sources;
+  }, [video.videoUrl, video.iframe_code, video.title, video.id]);
 
   const hideControls = () => {
     if (videoRef.current && !videoRef.current.paused) {
@@ -117,21 +179,55 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
   const togglePlay = useCallback(() => {
     if (videoRef.current) {
       if (videoRef.current.paused) {
-        videoRef.current.play().catch((error) => {
-          console.error('Error playing video:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Playback Error',
-            description: 'Unable to play the video. Please try again.',
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            setIsPlaying(true);
+            if (enableAnalytics) {
+              setAnalytics(prev => ({
+                ...prev,
+                playCount: prev.playCount + 1,
+                lastPlayTime: new Date()
+              }));
+              watchStartTimeRef.current = Date.now();
+            }
+          }).catch((error) => {
+            console.error('Error playing video:', error);
+            const videoError: VideoError = {
+              type: 'network',
+              message: 'Unable to play the video. Please try again.',
+              details: error
+            };
+            setError(videoError);
+            if (enableAnalytics) {
+              setAnalytics(prev => ({
+                ...prev,
+                errorCount: prev.errorCount + 1,
+                lastError: videoError
+              }));
+            }
+            toast({
+              variant: 'destructive',
+              title: 'Playback Error',
+              description: videoError.message,
+            });
           });
-        });
+        }
       } else {
         videoRef.current.pause();
+        setIsPlaying(false);
+        if (enableAnalytics && watchStartTimeRef.current) {
+          const watchTime = (Date.now() - watchStartTimeRef.current) / 1000;
+          setAnalytics(prev => ({
+            ...prev,
+            totalWatchTime: prev.totalWatchTime + watchTime
+          }));
+          watchStartTimeRef.current = null;
+        }
       }
-      setIsPlaying(!videoRef.current.paused);
       showAndAutoHideControls();
     }
-  }, [showAndAutoHideControls, toast]);
+  }, [showAndAutoHideControls, toast, enableAnalytics]);
 
   const handleVolumeChange = (value: number[]) => {
     if (videoRef.current) {
@@ -409,33 +505,69 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
     const setVideoDuration = () => setDuration(video.duration);
     const handleError = (e: Event) => {
       const target = e.target as HTMLVideoElement;
-      const errorMessage = target.error?.message || 'Unknown error';
-      setError(`Video playback error: ${errorMessage}`);
-  
-      // Auto-retry logic for network errors
-      if (retryCount < maxRetries && (target.error?.code === 2 || target.error?.code === 3)) {
-        setTimeout(() => {
-          setRetryCount(prev => prev + 1);
-          setError(null);
-          // Force reload the video source
-          if (videoRef.current) {
-            const currentSrc = videoRef.current.src;
-            videoRef.current.src = '';
-            videoRef.current.src = currentSrc;
-          }
-        }, 2000 * (retryCount + 1)); // Exponential backoff
-  
-        toast({
-          variant: 'destructive',
-          title: 'Video Error',
-          description: `Unable to load video. Retrying... (${retryCount + 1}/${maxRetries})`,
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Video Error',
-          description: 'Unable to load or play this video. Please try refreshing the page.',
-        });
+      const errorCode = target.error?.code;
+      let errorType: VideoError['type'] = 'unknown';
+      let errorMessage = target.error?.message || 'Unknown error';
+
+      // Map HTMLMediaElement error codes to our error types
+      switch (errorCode) {
+        case 1: // MEDIA_ERR_ABORTED
+          errorType = 'network';
+          errorMessage = 'Video loading was aborted';
+          break;
+        case 2: // MEDIA_ERR_NETWORK
+          errorType = 'network';
+          errorMessage = 'Network error while loading video';
+          break;
+        case 3: // MEDIA_ERR_DECODE
+          errorType = 'format';
+          errorMessage = 'Video format is not supported or corrupted';
+          break;
+        case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+          errorType = 'invalid_source';
+          errorMessage = 'Video source is not supported';
+          break;
+        default:
+          errorType = 'unknown';
+      }
+
+      const videoError: VideoError = {
+        type: errorType,
+        message: errorMessage,
+        code: errorCode,
+        details: target.error
+      };
+
+      setError(videoError);
+      if (enableAnalytics) {
+        setAnalytics(prev => ({
+          ...prev,
+          errorCount: prev.errorCount + 1,
+          lastError: videoError
+        }));
+      }
+
+      toast({
+        variant: 'destructive',
+        title: 'Video Error',
+        description: errorMessage,
+      });
+    };
+
+    const handleWaiting = () => {
+      if (enableAnalytics && !bufferingStartTimeRef.current) {
+        bufferingStartTimeRef.current = Date.now();
+      }
+    };
+
+    const handlePlaying = () => {
+      if (enableAnalytics && bufferingStartTimeRef.current) {
+        const bufferingTime = Date.now() - bufferingStartTimeRef.current;
+        setAnalytics(prev => ({
+          ...prev,
+          bufferingCount: prev.bufferingCount + 1
+        }));
+        bufferingStartTimeRef.current = null;
       }
     };
 
@@ -472,6 +604,8 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
     video.addEventListener('pause', () => setIsPlaying(false));
     video.addEventListener('ratechange', () => setPlaybackRate(video.playbackRate));
     video.addEventListener('error', handleError);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('playing', handlePlaying);
     video.loop = isLooping;
 
     const handleFullscreenChange = () => {
@@ -481,13 +615,15 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
 
     return () => {
       video.removeEventListener('timeupdate', updateProgress);
-      video.removeEventListener('loadedmetadata', setVideoDuration);
-      video.removeEventListener('loadedmetadata', checkSubtitles);
-      video.removeEventListener('loadedmetadata', checkAudioTracks);
-      video.removeEventListener('play', () => setIsPlaying(true));
-      video.removeEventListener('pause', () => setIsPlaying(false));
-      video.removeEventListener('ratechange', () => setPlaybackRate(video.playbackRate));
-      video.removeEventListener('error', handleError);
+     video.removeEventListener('loadedmetadata', setVideoDuration);
+     video.removeEventListener('loadedmetadata', checkSubtitles);
+     video.removeEventListener('loadedmetadata', checkAudioTracks);
+     video.removeEventListener('play', () => setIsPlaying(true));
+     video.removeEventListener('pause', () => setIsPlaying(false));
+     video.removeEventListener('ratechange', () => setPlaybackRate(video.playbackRate));
+     video.removeEventListener('error', handleError);
+     video.removeEventListener('waiting', handleWaiting);
+     video.removeEventListener('playing', handlePlaying);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [isLooping, toast]);
@@ -508,6 +644,38 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
 
   const qualities = ['1080p', '720p', '480p', 'Auto'];
   const speeds = [2, 1.5, 1, 0.5];
+
+  // Video source handlers
+  const handleSourceReady = useCallback((source: VideoSource) => {
+    setCurrentVideoSource(source);
+    setError(null);
+    if (enableAnalytics) {
+      // Log successful source loading
+      console.log('Video source loaded successfully:', source);
+    }
+  }, [enableAnalytics]);
+
+  const handleSourceError = useCallback((error: VideoError) => {
+    setError(error);
+    if (enableAnalytics) {
+      setAnalytics(prev => ({
+        ...prev,
+        errorCount: prev.errorCount + 1,
+        lastError: error
+      }));
+    }
+  }, [enableAnalytics]);
+
+  // Quality change handler with analytics
+  const handleQualityChange = useCallback((newQuality: string) => {
+    setQuality(newQuality);
+    if (enableAnalytics) {
+      setAnalytics(prev => ({
+        ...prev,
+        qualityChanges: prev.qualityChanges + 1
+      }));
+    }
+  }, [enableAnalytics]);
 
   // Touch gesture handlers
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -737,8 +905,10 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
   return (
     <div
       ref={(node) => {
-        playerContainerRef.current = node;
-        inViewRef(node);
+        if (node) {
+          playerContainerRef.current = node;
+          inViewRef(node);
+        }
       }}
       tabIndex={0}
       className={cn(
@@ -762,25 +932,37 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
       onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
     >
-      {error ? (
-        <div className="w-full h-full bg-black flex items-center justify-center">
-          <div className="text-center text-white">
-            <div className="text-lg mb-2">⚠️ Playback Error</div>
-            <div className="text-sm text-gray-400">{error}</div>
+      <VideoLoader
+        sources={videoSources}
+        onSourceReady={handleSourceReady}
+        onError={handleSourceError}
+        className={cn('w-full h-full', className)}
+      >
+        {currentVideoSource ? (
+          currentVideoSource.type === 'url' ? (
+            <video
+              ref={videoRef}
+              src={currentVideoSource.url}
+              className="w-full h-full object-contain"
+              crossOrigin="anonymous"
+            />
+          ) : (
+            <LazyIframe
+              srcDoc={currentVideoSource.iframeCode || ''}
+              title={currentVideoSource.title || video.title}
+              className="w-full h-full"
+            />
+          )
+        ) : inView ? (
+          <div className="w-full h-full bg-black flex items-center justify-center">
+            <div className="text-white text-lg">Preparing video...</div>
           </div>
-        </div>
-      ) : inView ? (
-        <video
-          ref={videoRef}
-          src={video.videoUrl}
-          className="w-full h-full object-contain"
-          crossOrigin="anonymous"
-        />
-      ) : (
-        <div className="w-full h-full bg-black flex items-center justify-center">
-          <div className="text-white text-lg">Video will load when in view</div>
-        </div>
-      )}
+        ) : (
+          <div className="w-full h-full bg-black flex items-center justify-center">
+            <div className="text-white text-lg">Video will load when in view</div>
+          </div>
+        )}
+      </VideoLoader>
       {/* Smart Skip Detector */}
       <SmartSkipDetector
         videoRef={videoRef}
@@ -955,9 +1137,9 @@ export function VideoPlayer({ video, className }: VideoPlayerProps) {
                    <DropdownMenuSubTrigger>Quality</DropdownMenuSubTrigger>
                    <DropdownMenuSubContent sideOffset={5} alignOffset={-5} className="bg-black/80 text-white border-white/20">
                      {qualities.map((q) => (
-                         <DropdownMenuItem key={q} onClick={() => setQuality(q)}>
-                            <Check className={cn('mr-2 h-4 w-4', quality === q ? 'opacity-100' : 'opacity-0')} /> {q}
-                         </DropdownMenuItem>
+                         <DropdownMenuItem key={q} onClick={() => handleQualityChange(q)}>
+                              <Check className={cn('mr-2 h-4 w-4', quality === q ? 'opacity-100' : 'opacity-0')} /> {q}
+                           </DropdownMenuItem>
                      ))}
                    </DropdownMenuSubContent>
                  </DropdownMenuSub>
