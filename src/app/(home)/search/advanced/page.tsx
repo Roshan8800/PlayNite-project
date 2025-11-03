@@ -13,10 +13,13 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Pagination } from '@/components/ui/pagination';
 import { useCollection, useFirestore } from '@/firebase';
 import { collection, query, where, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { CalendarIcon, Filter, Search, X } from 'lucide-react';
+import { usePagination } from '@/hooks/use-pagination';
+import { fetchVideosPaginated } from '@/lib/videos';
 import dynamic from 'next/dynamic';
 import type { Video } from '@/lib/types';
 
@@ -59,10 +62,15 @@ export default function AdvancedSearchPage() {
   });
 
   const [videos, setVideos] = useState<Video[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [lastDoc, setLastDoc] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(false);
+
+  const pagination = usePagination({
+    initialPageSize: 20,
+    totalItems,
+    syncWithUrl: true,
+  });
 
   // Available categories and tags
   const categories = ['Entertainment', 'Education', 'Music', 'Gaming', 'Sports', 'News', 'Technology', 'Comedy'];

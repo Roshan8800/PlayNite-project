@@ -8,6 +8,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
+import { Pagination } from '@/components/ui/pagination';
 import Link from 'next/link';
 import { useCollection, useUser } from '@/firebase';
 import { collection, query, where, limit, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -15,9 +16,10 @@ import { useFirestore } from '@/firebase';
 import type { Video, Category } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect, useCallback, memo } from 'react';
-import { fetchVideos } from '@/lib/videos';
+import { fetchVideos, fetchVideosPaginated } from '@/lib/videos';
 import { contentRecommendationEngine } from '@/ai/flows/content-recommendation-engine';
 import { useInView } from 'react-intersection-observer';
+import { usePagination } from '@/hooks/use-pagination';
 import dynamic from 'next/dynamic';
 
 // Dynamic imports for performance with React.memo for better performance
@@ -98,28 +100,38 @@ export default function HomePage() {
   const typedNewReleases = newReleases as Video[];
   const typedFeaturedVideos = featuredVideos as Video[];
 
-  // Infinite scroll state
-  const [videos, setVideos] = useState<Video[]>([]);
+  // Pagination state for "All Videos" section
+  const [allVideosData, setAllVideosData] = useState<Video[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [lastDocId, setLastDocId] = useState<string | null>(null);
 
-  const { ref: loadMoreRef, inView } = useInView({
-    threshold: 0.1,
+  const pagination = usePagination({
+    initialPageSize: 20,
+    totalItems,
+    syncWithUrl: true,
   });
 
-  const loadVideos = useCallback(async (reset = false) => {
-    if (loading || (!hasMore && !reset)) return;
-
+  const loadVideos = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const { videos: newVideos, lastDoc, hasMore: more } = await fetchVideos(20, reset ? null : (lastDocId as any));
-      setVideos(prev => reset ? (newVideos as Video[]) : [...prev, ...(newVideos as Video[])]);
-      setLastDocId(lastDoc?.id || null);
-      setHasMore(more);
+      const filters = isRestrictedContent ? {
+        status: 'Approved',
+        ageRestriction: user?.ageRestriction || 18,
+      } : {
+        status: 'Approved',
+      };
+
+      const { videos: newVideos, pagination: paginationInfo } = await fetchVideosPaginated(
+        pagination.currentPage,
+        pagination.pageSize,
+        filters
+      );
+
+      setAllVideosData(newVideos as Video[]);
+      setTotalItems(paginationInfo.totalItems);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load videos. Please try again.';
       setError(errorMessage);
@@ -127,10 +139,10 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [loading, hasMore, lastDocId]);
+  }, [pagination.currentPage, pagination.pageSize, isRestrictedContent, user?.ageRestriction]);
 
   useEffect(() => {
-    loadVideos(true);
+    loadVideos();
 
     // Generate personalized recommendations if user is logged in
     if (user && allVideos) {
@@ -177,13 +189,7 @@ export default function HomePage() {
       // Not logged in, show random recommendations
       setPersonalizedRecommendations(typedRecommendedVideos.slice(0, 5));
     }
-  }, [user, allVideos]);
-
-  useEffect(() => {
-    if (inView && hasMore && !loading) {
-      loadVideos();
-    }
-  }, [inView, hasMore, loading, loadVideos]);
+  }, [user, allVideos, loadVideos]);
 
   const renderVideoCarousel = (
     videos: Video[] | undefined,
@@ -292,27 +298,39 @@ export default function HomePage() {
 
       <section>
         <h2 className="text-xl md:text-2xl font-bold font-headline mb-4">All Videos</h2>
-        <MemoizedVideoGrid videos={videos} loading={loading} />
-        {loading && Array.from({ length: 10 }).map((_, i) => (
-          <div key={`loading-${i}`} className="space-y-2">
-            <Skeleton className="h-32 md:h-40 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        ))}
-        {hasMore && !loading && (
-          <div ref={loadMoreRef} className="col-span-full flex justify-center py-4">
-            <div className="text-muted-foreground text-sm md:text-base">Loading more videos...</div>
-          </div>
-        )}
-        {!hasMore && videos.length > 0 && (
-          <div className="col-span-full flex justify-center py-4">
-            <div className="text-muted-foreground text-sm md:text-base">No more videos to load</div>
+        <MemoizedVideoGrid videos={allVideosData} loading={loading} />
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: pagination.pageSize }).map((_, i) => (
+              <div key={`loading-${i}`} className="space-y-2">
+                <Skeleton className="h-32 md:h-40 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
           </div>
         )}
         {error && (
-          <div className="col-span-full flex justify-center py-4">
+          <div className="flex justify-center py-4">
             <div className="text-destructive text-sm md:text-base">{error}</div>
+          </div>
+        )}
+        {!loading && !error && allVideosData.length === 0 && (
+          <div className="flex justify-center py-4">
+            <div className="text-muted-foreground text-sm md:text-base">No videos found</div>
+          </div>
+        )}
+        {totalItems > 0 && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={pagination.setPage}
+              showPageSizeSelector={true}
+              pageSize={pagination.pageSize}
+              pageSizeOptions={pagination.pageSizeOptions}
+              onPageSizeChange={pagination.setPageSize}
+            />
           </div>
         )}
       </section>

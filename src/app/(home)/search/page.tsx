@@ -12,6 +12,9 @@ import { Search as SearchIcon, Filter, SortAsc, SortDesc } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Pagination } from '@/components/ui/pagination';
+import { usePagination } from '@/hooks/use-pagination';
+import { fetchVideosPaginated } from '@/lib/videos';
 
 function SearchResults() {
   const searchParams = useSearchParams();
@@ -19,11 +22,18 @@ function SearchResults() {
   const firestore = useFirestore();
   const { user } = useUser();
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'relevance' | 'newest' | 'oldest' | 'views'>('relevance');
   const [filterBy, setFilterBy] = useState<'all' | 'short' | 'long'>('all');
   const [showFilters, setShowFilters] = useState(false);
+
+  const pagination = usePagination({
+    initialPageSize: 20,
+    totalItems,
+    syncWithUrl: true,
+  });
 
   // Check parental controls and age restrictions
   const isRestrictedContent = user?.parentalControlsEnabled && user?.ageRestriction && user.ageRestriction < 18;
@@ -74,6 +84,7 @@ function SearchResults() {
     const fetchVideos = async () => {
       if (!queryParam) {
         setFilteredVideos([]);
+        setTotalItems(0);
         setLoading(false);
         setError(null);
         return;
@@ -81,71 +92,58 @@ function SearchResults() {
       setLoading(true);
       setError(null);
       try {
-        const videosRef = collection(firestore, 'videos');
-        // Enhanced search: search in title, description, and tags
-        const queries = [];
-
-        // Base query conditions
-        const baseConditions = [where('status', '==', 'Approved')];
+        // Build filters for paginated search
+        const filters: any = {
+          status: 'Approved',
+          sortBy: sortBy === 'relevance' ? 'views' : sortBy === 'newest' ? 'uploadedAt' : sortBy === 'oldest' ? 'uploadedAt' : 'views',
+          sortOrder: sortBy === 'oldest' ? 'asc' : 'desc',
+        };
 
         // Add parental control filters if needed
         if (isRestrictedContent) {
-          baseConditions.push(where('ageRestriction', '<=', user.ageRestriction || 18));
+          filters.ageRestriction = user.ageRestriction || 18;
         }
 
-        // Title search
-        queries.push(query(
-          videosRef,
-          ...baseConditions,
-          where('title', '>=', queryParam.toLowerCase()),
-          where('title', '<=', queryParam.toLowerCase() + '\uf8ff'),
-          orderBy('title'),
-          limit(50)
-        ));
-
-        // Description search (basic implementation)
-        queries.push(query(
-          videosRef,
-          ...baseConditions,
-          where('description', '>=', queryParam.toLowerCase()),
-          where('description', '<=', queryParam.toLowerCase() + '\uf8ff'),
-          orderBy('description'),
-          limit(50)
-        ));
-
-        // Tags search if available
-        if (queryParam.length > 2) {
-          queries.push(query(
-            videosRef,
-            ...baseConditions,
-            where('tags', 'array-contains', queryParam.toLowerCase()),
-            limit(50)
-          ));
+        // Add duration filter
+        if (filterBy !== 'all') {
+          if (filterBy === 'short') {
+            filters.maxDuration = 300; // 5 minutes
+          } else if (filterBy === 'long') {
+            filters.minDuration = 1800; // 30 minutes
+          }
         }
 
-        const results = await Promise.all(queries.map(q => getDocs(q)));
-        const allVideos = new Map<string, Video>();
+        // For text search, we'll use a simplified approach since Firestore doesn't support full-text search natively
+        // In production, you'd want to use Algolia or similar service
+        const { videos: searchResults, pagination: paginationInfo } = await fetchVideosPaginated(
+          pagination.currentPage,
+          pagination.pageSize,
+          filters
+        );
 
-        results.forEach(snapshot => {
-          snapshot.docs.forEach(doc => {
-            const video = { ...doc.data(), id: doc.id } as Video;
-            allVideos.set(video.id, video);
-          });
-        });
+        // Client-side filtering for search query (simplified - in production use proper search service)
+        let filtered = (searchResults as Video[]).filter(video =>
+          video.title?.toLowerCase().includes(queryParam.toLowerCase()) ||
+          video.description?.toLowerCase().includes(queryParam.toLowerCase()) ||
+          video.tags?.some((tag: string) => tag.toLowerCase().includes(queryParam.toLowerCase()))
+        );
 
-        const videos = Array.from(allVideos.values());
-        const filteredAndSorted = applyFiltersAndSort(videos);
-        setFilteredVideos(filteredAndSorted);
+        // Apply client-side sorting if needed
+        filtered = applyFiltersAndSort(filtered);
+
+        setFilteredVideos(filtered);
+        setTotalItems(paginationInfo.totalItems);
       } catch (error) {
         console.error('Error fetching search results:', error);
         setError('Failed to load search results. Please try again.');
         setFilteredVideos([]);
+        setTotalItems(0);
       } finally {
         setLoading(false);
       }
     };
     fetchVideos();
-  }, [queryParam, firestore, sortBy, filterBy, user, isRestrictedContent]);
+  }, [queryParam, firestore, sortBy, filterBy, user, isRestrictedContent, pagination.currentPage, pagination.pageSize]);
 
   return (
     <div className="space-y-8">
@@ -175,13 +173,28 @@ function SearchResults() {
           ))}
         </div>
       ) : filteredVideos.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {filteredVideos.map((video, index) => (
-            <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-              <VideoCard video={video} />
+        <>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {filteredVideos.map((video, index) => (
+              <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+                <VideoCard video={video} />
+              </div>
+            ))}
+          </div>
+          {totalItems > 0 && (
+            <div className="mt-8">
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={pagination.setPage}
+                showPageSizeSelector={true}
+                pageSize={pagination.pageSize}
+                pageSizeOptions={pagination.pageSizeOptions}
+                onPageSizeChange={pagination.setPageSize}
+              />
             </div>
-          ))}
-        </div>
+          )}
+        </>
       ) : (
         <div className="flex h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
           <SearchIcon className="mx-auto h-12 w-12 text-muted-foreground" />
