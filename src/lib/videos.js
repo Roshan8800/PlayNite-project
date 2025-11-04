@@ -13,8 +13,11 @@ export async function fetchVideos(limitCount = 20, lastDocId = null) {
       if (typeof lastDocId !== 'string' || lastDocId.trim() === '') {
         throw new Error('Invalid lastDocId provided');
       }
-      const lastDoc = doc(db, 'videos', lastDocId);
-      q = query(q, startAfter(lastDoc));
+      const lastDocRef = doc(db, 'videos', lastDocId);
+      const lastDoc = await getDoc(lastDocRef);
+      if(lastDoc.exists()) {
+        q = query(q, startAfter(lastDoc));
+      }
     }
 
     const videosSnapshot = await getDocs(q);
@@ -23,8 +26,8 @@ export async function fetchVideos(limitCount = 20, lastDocId = null) {
       ...doc.data()
     }));
 
-    const lastDoc = videosSnapshot.docs[videosSnapshot.docs.length - 1];
-    return { videos: videosList, lastDoc: lastDoc || null, hasMore: videosSnapshot.docs.length === limitCount };
+    const lastVisible = videosSnapshot.docs[videosSnapshot.docs.length - 1];
+    return { videos: videosList, lastDoc: lastVisible || null, hasMore: videosSnapshot.docs.length === limitCount };
   } catch (error) {
     console.error('Error fetching videos:', error);
     throw error;
@@ -101,7 +104,7 @@ export async function fetchVideosPaginated(page = 1, pageSize = 20, filters = {}
     }
 
     // Get total count for pagination info
-    const totalSnapshot = await getDocs(baseQuery);
+    const totalSnapshot = await getDocs(query(baseQuery));
     const totalItems = totalSnapshot.size;
 
     // Apply pagination
