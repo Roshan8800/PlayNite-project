@@ -107,14 +107,28 @@ export default function PrivacyPolicyPage() {
         <p>
           We use cookies and similar technologies to enhance your experience, analyze usage, and provide
           personalized content. You can control cookie settings through your browser, though disabling
-          cookies may affect site functionality.
+          cookies may affect site functionality. For detailed information about our cookie usage, please
+          see our Cookie Policy.
         </p>
 
-        <h2>6. Third-Party Services</h2>
+        <h2>6. Third-Party Services and Embedded Content</h2>
         <p>
-          Our platform may contain links to third-party websites or integrate with third-party services.
-          We are not responsible for the privacy practices of these external sites. We encourage you to
-          review their privacy policies before providing any personal information.
+          Our platform embeds videos and content from approved third-party platforms (such as Pornhub).
+          PlayNite does not host, upload, or store any video content on our own servers. All videos are
+          streamed directly from these third-party platforms.
+        </p>
+
+        <p>
+          We are not responsible for the privacy practices, data collection, or content policies of these
+          third-party platforms. When you view embedded content, you are subject to the privacy policies
+          and terms of service of those platforms. We encourage you to review their privacy policies and
+          terms before interacting with embedded content.
+        </p>
+
+        <p>
+          We do not collect, store, or have access to any data from embedded videos, including viewing
+          history, user interactions, or analytics data from third-party platforms. Any data collection
+          related to embedded content is handled solely by the respective third-party platform.
         </p>
 
         <h2>7. Age Restrictions and COPPA Compliance</h2>

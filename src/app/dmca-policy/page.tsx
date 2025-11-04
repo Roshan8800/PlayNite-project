@@ -28,6 +28,14 @@ export default function DMCAPolicyPage() {
           copyright infringement that comply with the Digital Millennium Copyright Act ("DMCA").
         </p>
 
+        <p>
+          <strong>Embedded Content Notice:</strong> PlayNite embeds videos from approved third-party
+          platforms (such as Pornhub). We do not host or upload any video content ourselves. For
+          copyright claims related to embedded content, please contact the original platform directly.
+          We will cooperate with valid DMCA notices by removing or disabling access to embedded content
+          when appropriate.
+        </p>
+
         <h2>Reporting Copyright Infringement</h2>
         <p>
           If you believe that your work has been copied in a way that constitutes copyright infringement,
@@ -108,12 +116,21 @@ export default function DMCAPolicyPage() {
 
         <h2>Process</h2>
         <p>
-          Upon receipt of a valid DMCA notice, we will:
+          Upon receipt of a valid DMCA notice, our response will depend on the nature of the content:
         </p>
+
+        <h3>For User-Generated Content on PlayNite:</h3>
         <ol>
           <li>Remove or disable access to the allegedly infringing material.</li>
           <li>Notify the user who posted the content.</li>
           <li>Provide the user with an opportunity to respond.</li>
+        </ol>
+
+        <h3>For Embedded Third-Party Content:</h3>
+        <ol>
+          <li>Forward the DMCA notice to the original third-party platform hosting the content.</li>
+          <li>Remove or disable the embed link on our platform if the content is no longer available on the source platform.</li>
+          <li>Notify the complainant of our actions and provide contact information for the third-party platform.</li>
         </ol>
 
         <p>
@@ -140,6 +157,8 @@ export default function DMCAPolicyPage() {
         <p className="mt-6 text-sm text-muted-foreground">
           This policy is in compliance with the Digital Millennium Copyright Act (DMCA) and other applicable
           copyright laws. We take copyright infringement seriously and will respond to valid notices promptly.
+          For embedded content, we work cooperatively with third-party platforms to ensure proper handling of
+          copyright claims.
         </p>
       </div>
     </div>

@@ -51,7 +51,15 @@ export default function TermsOfServicePage() {
         </p>
 
         <h2>4. Content and Conduct</h2>
-        <h3>4.1 Prohibited Content</h3>
+        <h3>4.1 Third-Party Content</h3>
+        <p>
+          PlayNite embeds videos and content from approved third-party platforms (such as Pornhub).
+          We do not host, upload, or store any video content on our own servers. All videos are streamed
+          directly from these third-party platforms. You acknowledge that by accessing embedded content,
+          you are also subject to the terms of service and community guidelines of those platforms.
+        </p>
+
+        <h3>4.2 Prohibited Content</h3>
         <p>You agree not to upload, post, or transmit content that:</p>
         <ul>
           <li>Violates any applicable laws or regulations</li>
@@ -101,11 +109,25 @@ export default function TermsOfServicePage() {
           YOUR SOLE RISK.
         </p>
 
+        <p>
+          <strong>Third-Party Content Disclaimer:</strong> We do not control, endorse, or guarantee the
+          accuracy, completeness, or quality of any content embedded from third-party platforms. We are
+          not responsible for any damages or losses arising from your use of or reliance on such content.
+          Any interactions with embedded content are solely between you and the third-party platform provider.
+        </p>
+
         <h2>9. Limitation of Liability</h2>
         <p>
           IN NO EVENT SHALL WE BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE
           DAMAGES, INCLUDING WITHOUT LIMITATION, LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE
           LOSSES, RESULTING FROM YOUR USE OF THE SERVICE.
+        </p>
+
+        <p>
+          <strong>Third-Party Content Liability:</strong> We shall not be liable for any claims, damages,
+          or losses arising from content embedded from third-party platforms, including but not limited to
+          copyright infringement, defamation, privacy violations, or any other legal claims related to such content.
+          You agree to indemnify and hold us harmless from any claims arising from your use of embedded content.
         </p>
 
         <h2>10. Indemnification</h2>

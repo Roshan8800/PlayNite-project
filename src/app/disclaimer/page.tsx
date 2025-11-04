@@ -24,9 +24,10 @@ export default function DisclaimerPage() {
 
         <p>
           PlayNite is an adult entertainment platform that provides access to explicit sexual content,
-          including videos, images, and other media intended for mature audiences only. By accessing
-          this website, you acknowledge and agree that you are at least 18 years of age (or the age
-          of majority in your jurisdiction, whichever is greater).
+          including videos, images, and other media intended for mature audiences only. Our platform
+          embeds videos from approved third-party platforms (such as Pornhub). We do not host, upload,
+          or store any video content on our own servers. By accessing this website, you acknowledge and
+          agree that you are at least 18 years of age (or the age of majority in your jurisdiction, whichever is greater).
         </p>
 
         <h2>Age Restrictions</h2>
@@ -42,16 +43,19 @@ export default function DisclaimerPage() {
         </p>
         <ul>
           <li>Explicit sexual content and nudity</li>
-          <li>Adult entertainment videos and media</li>
+          <li>Adult entertainment videos and media embedded from third-party platforms</li>
           <li>Potentially offensive or disturbing material</li>
           <li>User-generated content that may not reflect our values</li>
+          <li>Content from external sources over which we have no control</li>
         </ul>
 
         <h2>Legal Compliance</h2>
         <p>
           PlayNite complies with all applicable laws regarding adult content distribution. We do not
-          knowingly collect or distribute content involving minors. If you encounter any content that
-          violates our policies or applicable laws, please report it immediately.
+          knowingly collect or distribute content involving minors. For content embedded from third-party
+          platforms, we rely on those platforms' compliance with applicable laws. If you encounter any
+          content that violates our policies or applicable laws, please report it immediately. For issues
+          with embedded content, we recommend contacting the original platform directly.
         </p>
 
         <h2>Parental Controls</h2>
