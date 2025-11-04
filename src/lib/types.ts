@@ -47,6 +47,11 @@ export type User = {
   pushNotificationsEnabled?: boolean;
   parentalControlsEnabled?: boolean;
   ageRestriction?: number;
+  playbackSettings?: {
+    autoplay: boolean;
+    quality: string;
+    volume: number;
+  };
 };
 
 export type Notification = {

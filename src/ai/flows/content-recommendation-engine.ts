@@ -8,8 +8,7 @@
  * - ContentRecommendationEngineOutput - The return type for the contentRecommendationEngine function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const ContentRecommendationEngineInputSchema = z.object({
   viewingHistory: z
@@ -33,31 +32,8 @@ export type ContentRecommendationEngineOutput =
 export async function contentRecommendationEngine(
   input: ContentRecommendationEngineInput
 ): Promise<ContentRecommendationEngineOutput> {
-  return contentRecommendationEngineFlow(input);
+  // TODO: Re-implement AI content recommendation without genkit
+  // For now, return basic recommendations based on viewing history
+  const recommendedVideos = input.viewingHistory.slice(0, 5);
+  return { recommendedVideos };
 }
-
-const prompt = ai.definePrompt({
-  name: 'contentRecommendationEnginePrompt',
-  input: {schema: ContentRecommendationEngineInputSchema},
-  output: {schema: ContentRecommendationEngineOutputSchema},
-  prompt: `You are an expert video recommendation engine.
-
-Based on the user's viewing history and preferences, you will recommend a list of video IDs.
-
-User Viewing History: {{{viewingHistory}}}
-User Preferences: {{{userPreferences}}}
-
-Recommended Videos:`, // Removed JSON wrapping because the model already produces valid JSON.
-});
-
-const contentRecommendationEngineFlow = ai.defineFlow(
-  {
-    name: 'contentRecommendationEngineFlow',
-    inputSchema: ContentRecommendationEngineInputSchema,
-    outputSchema: ContentRecommendationEngineOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);

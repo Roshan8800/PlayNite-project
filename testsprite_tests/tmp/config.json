@@ -1,0 +1,16 @@
+{
+  "status": "init",
+  "scope": "codebase",
+  "type": "frontend",
+  "localEndpoint": "http://localhost:9002/",
+  "serverPort": 40407,
+  "executionArgs": {
+    "projectName": "nextn",
+    "projectPath": "/home/user/studio",
+    "testIds": [],
+    "additionalInstruction": "Fix Next.js project errors",
+    "envs": {
+      "API_KEY": "sk-user-bWQKuXTrC_B7rOv1ZiiwKWJUXeVvEirQibf8W2SnC80yho6KbVnMwzMqfmKM48WWLaAC6cm9w7MSeYBUkydEjYo7Qy-75PAe2ErtUf65n2CL4B4R67t1CiIm053MutNo9sA"
+    }
+  }
+}

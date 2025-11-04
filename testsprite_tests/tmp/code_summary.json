@@ -1,0 +1,103 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "Next.js",
+    "React",
+    "Tailwind CSS",
+    "Firebase",
+    "Genkit AI",
+    "Jest",
+    "Node.js"
+  ],
+  "features": [
+    {
+      "name": "Video Player",
+      "description": "Core video playback functionality with custom controls and analytics",
+      "files": [
+        "src/components/video-player.tsx",
+        "src/components/video-loader.tsx",
+        "src/components/video-analytics.tsx",
+        "src/__tests__/video-player.test.tsx",
+        "src/__tests__/video-loader.test.tsx"
+      ]
+    },
+    {
+      "name": "User Authentication",
+      "description": "Firebase-based authentication system with sign in/out functionality",
+      "files": [
+        "src/firebase/auth/providers.ts",
+        "src/firebase/auth/signin.ts",
+        "src/firebase/auth/signout.ts",
+        "src/firebase/auth/use-user.tsx",
+        "src/app/login/page.tsx",
+        "src/app/signup/page.tsx"
+      ]
+    },
+    {
+      "name": "Video Management",
+      "description": "Admin interface for managing videos, categories, and user reports",
+      "files": [
+        "src/app/admin/videos/page.tsx",
+        "src/app/admin/categories/page.tsx",
+        "src/app/admin/reports/page.tsx",
+        "src/app/admin/users/page.tsx",
+        "src/app/admin/approval/page.tsx"
+      ]
+    },
+    {
+      "name": "Search and Discovery",
+      "description": "Advanced search functionality with filters and recommendations",
+      "files": [
+        "src/app/(home)/search/page.tsx",
+        "src/app/(home)/search/advanced/page.tsx",
+        "src/components/search-popover.tsx",
+        "src/components/video-filters.tsx",
+        "src/hooks/use-video-filters.tsx"
+      ]
+    },
+    {
+      "name": "AI Content Features",
+      "description": "AI-powered content moderation, tagging, and recommendations",
+      "files": [
+        "src/ai/flows/ai-content-moderation.ts",
+        "src/ai/flows/ai-tag-generation.ts",
+        "src/ai/flows/content-recommendation-engine.ts",
+        "src/ai/flows/content-summarization.ts",
+        "src/ai/flows/ai-search-suggestions.ts"
+      ]
+    },
+    {
+      "name": "User Interface Components",
+      "description": "Reusable UI components built with Radix UI and Tailwind",
+      "files": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/tabs.tsx"
+      ]
+    },
+    {
+      "name": "Firebase Integration",
+      "description": "Firebase services for data storage, analytics, and real-time features",
+      "files": [
+        "src/firebase/config.ts",
+        "src/firebase/firestore/use-collection.tsx",
+        "src/firebase/firestore/use-doc.tsx",
+        "src/firebase/storage.ts",
+        "src/firebase/analytics.ts"
+      ]
+    },
+    {
+      "name": "Performance Optimization",
+      "description": "Bundle optimization, caching, and performance monitoring",
+      "files": [
+        "src/lib/bundle-optimization.ts",
+        "src/lib/cache.ts",
+        "src/lib/performance-monitoring.ts",
+        "performance-optimization.js"
+      ]
+    }
+  ]
+}

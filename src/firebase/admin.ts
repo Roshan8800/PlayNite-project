@@ -1,10 +1,10 @@
 var admin = require("firebase-admin");
 
-var serviceAccount = require("../../service-account.json");
+const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH || "../../service-account.json";
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://playnite-30409-default-rtdb.firebaseio.com"
+  credential: admin.credential.cert(require(serviceAccountPath)),
+  databaseURL: process.env.FIREBASE_DATABASE_URL || "https://playnite-30409-default-rtdb.firebaseio.com"
 });
 
 const db = admin.firestore();

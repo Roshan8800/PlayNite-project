@@ -3,8 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { AlertCircle, RefreshCw, Play, Loader2 } from 'lucide-react';
+import { AlertCircle, RefreshCw, Play, Loader2, Wifi, WifiOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNetworkStatus } from '@/hooks/use-network-status';
+import { retryVideoLoad } from '@/lib/retry';
+import { fetchWithCache } from '@/lib/offline-cache';
+import { NetworkError, VideoLoadError } from '@/lib/errors';
 
 export type VideoSourceType = 'url' | 'iframe';
 
@@ -52,6 +56,7 @@ export function VideoLoader({
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { isOnline, isSlowConnection } = useNetworkStatus();
 
   const getSourceKey = (source: VideoSource, index: number) => `${source.type}-${index}`;
 
@@ -77,27 +82,57 @@ export function VideoLoader({
     return null;
   };
 
-  const testVideoUrl = (url: string): Promise<boolean> => {
-    return new Promise((resolve) => {
+  const testVideoUrl = async (url: string): Promise<boolean> => {
+    // Check network status first
+    if (!isOnline) {
+      throw new NetworkError('No internet connection available');
+    }
+
+    // Use cached result if available and online
+    const cacheKey = `video_test_${url}`;
+    try {
+      const cached = await fetchWithCache(
+        cacheKey,
+        () => Promise.resolve(false), // We'll set this below
+        { ttl: 30 * 60 * 1000 } // 30 minutes cache
+      );
+
+      if (cached === true) {
+        return true;
+      }
+    } catch {
+      // Continue with fresh test
+    }
+
+    return new Promise((resolve, reject) => {
       const video = document.createElement('video');
       video.preload = 'metadata';
       video.crossOrigin = 'anonymous';
 
+      // Adjust timeout based on connection quality
+      const effectiveTimeout = isSlowConnection ? timeout * 2 : timeout;
+
       const timeoutId = setTimeout(() => {
         video.remove();
-        resolve(false);
-      }, timeout);
+        reject(new VideoLoadError('Video load timeout', {
+          context: { url, timeout: effectiveTimeout, isSlowConnection }
+        }));
+      }, effectiveTimeout);
 
       video.onloadedmetadata = () => {
         clearTimeout(timeoutId);
         video.remove();
+        // Cache successful result
+        fetchWithCache(cacheKey, () => Promise.resolve(true), { ttl: 30 * 60 * 1000 });
         resolve(true);
       };
 
-      video.onerror = () => {
+      video.onerror = (event) => {
         clearTimeout(timeoutId);
         video.remove();
-        resolve(false);
+        reject(new VideoLoadError('Video failed to load', {
+          context: { url, error: event, isSlowConnection }
+        }));
       };
 
       video.src = url;
@@ -155,27 +190,44 @@ export function VideoLoader({
     }
 
     try {
-      let isValid = false;
+      // Use network-aware retry logic
+      const result = await retryVideoLoad(async () => {
+        let isValid = false;
 
-      if (source.type === 'url' && source.url) {
-        isValid = await testVideoUrl(source.url);
-      } else if (source.type === 'iframe' && source.iframeCode) {
-        isValid = await testIframeCode(source.iframeCode);
-      }
+        if (source.type === 'url' && source.url) {
+          isValid = await testVideoUrl(source.url);
+        } else if (source.type === 'iframe' && source.iframeCode) {
+          isValid = await testIframeCode(source.iframeCode);
+        }
 
-      if (isValid) {
-        setLoadStates(prev => new Map(prev.set(sourceKey, {
-          status: 'ready',
-          retryCount: currentState.retryCount,
-          lastAttempt: new Date()
-        })));
-        onSourceReady(source);
-      } else {
-        throw new Error('Source validation failed');
-      }
+        if (!isValid) {
+          throw new VideoLoadError('Source validation failed', {
+            context: { source, index }
+          });
+        }
+
+        return source;
+      }, {
+        maxAttempts: maxRetries,
+        onRetry: (error, attempt) => {
+          console.warn(`Video load retry ${attempt} for source ${index}:`, error.message);
+          toast({
+            title: "Retrying video load",
+            description: `Attempt ${attempt} of ${maxRetries} for ${source.title || 'video'}`,
+            duration: 2000,
+          });
+        }
+      });
+
+      setLoadStates(prev => new Map(prev.set(sourceKey, {
+        status: 'ready',
+        retryCount: currentState.retryCount,
+        lastAttempt: new Date()
+      })));
+      onSourceReady(result);
     } catch (error) {
       const videoError: VideoError = {
-        type: 'network',
+        type: error instanceof NetworkError ? 'network' : 'unknown',
         message: error instanceof Error ? error.message : 'Failed to load video source',
         details: error
       };
@@ -189,8 +241,18 @@ export function VideoLoader({
 
       setLoadStates(prev => new Map(prev.set(sourceKey, errorState)));
       onError(videoError);
+
+      // Show user-friendly error message
+      if (error instanceof NetworkError) {
+        toast({
+          title: "Network Error",
+          description: "Unable to load video due to connection issues. Please check your internet and try again.",
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
     }
-  }, [loadStates, maxRetries, onSourceReady, onError]);
+  }, [loadStates, maxRetries, onSourceReady, onError, toast, isOnline, isSlowConnection]);
 
   const retrySource = (index: number) => {
     const source = sources[index];
@@ -244,6 +306,12 @@ export function VideoLoader({
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
           <p className="text-lg font-semibold">No video sources available</p>
           <p className="text-sm text-gray-400">This video cannot be played.</p>
+          {!isOnline && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-yellow-500">
+              <WifiOff className="h-4 w-4" />
+              <span className="text-xs">Offline mode - limited functionality</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -258,22 +326,43 @@ export function VideoLoader({
           <p className="text-sm text-gray-400">
             Testing source {currentSourceIndex + 1} of {sources.length}
           </p>
+          {isSlowConnection && (
+            <div className="mt-2 flex items-center justify-center gap-2 text-yellow-500">
+              <Wifi className="h-4 w-4" />
+              <span className="text-xs">Slow connection detected - loading may take longer</span>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   if (currentState?.status === 'error') {
+    const isNetworkError = currentState.error?.type === 'network' || !isOnline;
+
     return (
       <div className={cn('w-full aspect-video bg-black flex items-center justify-center text-white', className)}>
         <div className="text-center max-w-md">
-          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-          <p className="text-lg font-semibold mb-2">Video Load Error</p>
+          {isNetworkError ? (
+            <WifiOff className="h-12 w-12 mx-auto mb-4 text-red-500" />
+          ) : (
+            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+          )}
+          <p className="text-lg font-semibold mb-2">
+            {isNetworkError ? 'Network Error' : 'Video Load Error'}
+          </p>
           <p className="text-sm text-gray-400 mb-4">
             {getErrorMessage(currentState.error!)}
           </p>
-          <div className="flex gap-2 justify-center">
-            {currentState.retryCount < maxRetries && (
+          {!isOnline && (
+            <div className="mb-4 p-2 bg-yellow-900/20 border border-yellow-600/30 rounded">
+              <p className="text-xs text-yellow-400">
+                You're currently offline. Video will load when connection is restored.
+              </p>
+            </div>
+          )}
+          <div className="flex gap-2 justify-center flex-wrap">
+            {isOnline && currentState.retryCount < maxRetries && (
               <Button
                 variant="outline"
                 size="sm"
@@ -290,6 +379,7 @@ export function VideoLoader({
                 size="sm"
                 onClick={tryNextSource}
                 className="text-white border-white hover:bg-white hover:text-black"
+                disabled={!isOnline}
               >
                 <Play className="h-4 w-4 mr-2" />
                 Try Next Source

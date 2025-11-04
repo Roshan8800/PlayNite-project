@@ -43,6 +43,17 @@ const menuItems = [
   { href: '/notifications', label: 'Notifications', icon: Bell },
 ];
 
+const policyItems = [
+  { href: '/help', label: 'Help & FAQ' },
+  { href: '/contact-support', label: 'Contact Support' },
+  { href: '/report-content', label: 'Report Content' },
+  { href: '/terms-of-service', label: 'Terms of Service' },
+  { href: '/privacy-policy', label: 'Privacy Policy' },
+  { href: '/dmca-policy', label: 'DMCA Policy' },
+  { href: '/disclaimer', label: 'Disclaimer' },
+  { href: '/cookie-policy', label: 'Cookie Policy' },
+];
+
 export default function AppSidebar() {
   const pathname = usePathname();
   const { user, loading } = useUser();
@@ -153,6 +164,25 @@ export default function AppSidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
+        <SidebarSeparator />
+        <div className="px-2 py-2">
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">Support & Legal</h3>
+          <div className="space-y-1">
+            {policyItems.map((item) => (
+              <Link key={item.href} href={item.href}>
+                <SidebarMenuButton
+                  isActive={pathname === item.href}
+                  className={cn(
+                    'w-full justify-start text-sm',
+                    pathname === item.href && 'bg-accent text-accent-foreground'
+                  )}
+                >
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </Link>
+            ))}
+          </div>
+        </div>
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">

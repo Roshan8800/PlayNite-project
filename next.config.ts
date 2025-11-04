@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack: (config, { dev, isServer, nextRuntime }) => {
+
     // Bundle optimization for production builds
     if (!dev && !isServer) {
       config.optimization.splitChunks.chunks = 'all';
@@ -116,6 +117,7 @@ const nextConfig: NextConfig = {
 
     return config;
   },
+  transpilePackages: ['ansi-color'],
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },

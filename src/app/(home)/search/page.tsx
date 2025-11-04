@@ -52,27 +52,34 @@ function SearchResults() {
   const isRestrictedContent = user?.parentalControlsEnabled && user?.ageRestriction && user.ageRestriction < 18;
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchVideos = async () => {
       if (!videoFilters.filters.query) {
-        setFilteredVideos([]);
-        setTotalItems(0);
-        setLoading(false);
-        setError(null);
+        if (isMounted) {
+          setFilteredVideos([]);
+          setTotalItems(0);
+          setLoading(false);
+          setError(null);
+        }
         return;
       }
-      setLoading(true);
-      setError(null);
+      if (isMounted) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         // Build filters for paginated search
         const filters: any = {
           status: 'Approved',
           sortBy: videoFilters.filters.sortBy === 'date' ? 'uploadedAt' : videoFilters.filters.sortBy === 'views' ? 'views' : 'views',
           sortOrder: 'desc',
+          query: videoFilters.filters.query, // Pass query for server-side filtering
         };
 
         // Add parental control filters if needed
         if (isRestrictedContent) {
-          filters.ageRestriction = user.ageRestriction || 18;
+          filters.ageRestriction = user?.ageRestriction || 18;
         }
 
         // Apply category filter
@@ -126,26 +133,30 @@ function SearchResults() {
           filters
         );
 
-        // Client-side filtering for search query (simplified - in production use proper search service)
-        let filtered = (searchResults as Video[]).filter(video =>
-          video.title?.toLowerCase().includes(videoFilters.filters.query.toLowerCase()) ||
-          video.description?.toLowerCase().includes(videoFilters.filters.query.toLowerCase()) ||
-          video.tags?.some((tag: string) => tag.toLowerCase().includes(videoFilters.filters.query.toLowerCase()))
-        );
-
-        setFilteredVideos(filtered);
-        setTotalItems(paginationInfo.totalItems);
+        if (isMounted) {
+          setFilteredVideos(searchResults as Video[]);
+          setTotalItems(paginationInfo.totalItems);
+        }
       } catch (error) {
         console.error('Error fetching search results:', error);
-        setError('Failed to load search results. Please try again.');
-        setFilteredVideos([]);
-        setTotalItems(0);
+        if (isMounted) {
+          setError('Failed to load search results. Please try again.');
+          setFilteredVideos([]);
+          setTotalItems(0);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+
     fetchVideos();
-  }, [videoFilters.filters, firestore, user, isRestrictedContent, pagination.currentPage, pagination.pageSize]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [videoFilters.filters, user, isRestrictedContent, pagination.currentPage, pagination.pageSize]);
 
   return (
     <div className="space-y-8">

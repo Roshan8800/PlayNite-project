@@ -9,10 +9,10 @@ import { useMemo } from 'react';
 // You can use this provider to ensure that Firebase is initialized once on the client.
 // It is recommended to use this provider at the root of your layout.
 export function FirebaseClientProvider({ children }: { children: React.ReactNode }) {
-  const firebaseContext = useMemo<FirebaseProviderProps>(() => {
+  const firebaseContext = useMemo(() => {
     const { firebaseApp, auth, firestore } = initializeFirebase();
-    return { firebaseApp, auth, firestore };
-  }, []);
+    return { firebaseApp, auth, firestore, children };
+  }, [children]);
 
-  return <FirebaseProvider {...firebaseContext}>{children}</FirebaseProvider>;
+  return <FirebaseProvider {...firebaseContext} />;
 }

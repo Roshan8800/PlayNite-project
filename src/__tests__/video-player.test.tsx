@@ -79,19 +79,6 @@ describe('VideoPlayer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock HTMLVideoElement
-    Object.defineProperty(HTMLVideoElement.prototype, 'play', {
-      writable: true,
-      value: jest.fn().mockResolvedValue(undefined)
-    });
-    Object.defineProperty(HTMLVideoElement.prototype, 'pause', {
-      writable: true,
-      value: jest.fn()
-    });
-    Object.defineProperty(HTMLVideoElement.prototype, 'load', {
-      writable: true,
-      value: jest.fn()
-    });
   });
 
   it('renders video player with controls', async () => {

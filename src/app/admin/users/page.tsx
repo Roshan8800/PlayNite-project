@@ -29,7 +29,7 @@ import {
 import { MoreHorizontal, PlusCircle, Search } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useCollection, useFirestore } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, type DocumentData } from 'firebase/firestore';
 import { type User } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -128,64 +128,68 @@ export default function AdminUsersPage() {
                   </TableRow>                
                 )}
                 {users && users.length > 0 ? (
-                  users.map((user) => (
-                    <TableRow key={(user as User).uid}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={(user as User).avatarUrl || ''} alt={(user as User).name || ''} />
-                            <AvatarFallback>
-                              {(user as User).name?.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>{(user as User).name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{(user as User).email}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            (user as User).role === 'Admin'
-                              ? 'default'
-                              : 'secondary'
-                          }
-                        >
-                          {(user as User).role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={(user as User).status === 'Active' ? 'secondary' : 'destructive'} className={(user as User).status === 'Active' ? 'bg-green-500/20 text-green-700 dark:text-green-400 border-transparent' : ''}>
-                          {(user as User).status || 'Active'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {new Date((user as User).joinedDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              aria-haspopup="true"
-                              size="icon"
-                              variant="ghost"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Change Role</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  users.map((user) => {
+                    const userData = user as DocumentData & { id: string };
+                    const typedUser = userData as unknown as User;
+                    return (
+                      <TableRow key={typedUser.uid}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={typedUser.avatarUrl || ''} alt={typedUser.name || ''} />
+                              <AvatarFallback>
+                                {typedUser.name?.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{typedUser.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{typedUser.email}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              typedUser.role === 'Admin'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                          >
+                            {typedUser.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={typedUser.status === 'Active' ? 'secondary' : 'destructive'} className={typedUser.status === 'Active' ? 'bg-green-500/20 text-green-700 dark:text-green-400 border-transparent' : ''}>
+                            {typedUser.status || 'Active'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {new Date(typedUser.joinedDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                aria-haspopup="true"
+                                size="icon"
+                                variant="ghost"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem>Edit</DropdownMenuItem>
+                              <DropdownMenuItem>Change Role</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive">
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">

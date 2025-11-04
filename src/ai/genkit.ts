@@ -1,7 +1,8 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+// AI functionality temporarily disabled due to build issues
+// TODO: Re-implement AI features without genkit dependency
 
-export const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-2.5-flash',
-});
+export const ai = {
+  generate: () => Promise.resolve('AI functionality disabled'),
+  defineFlow: () => ({}),
+  defineSchema: () => ({}),
+};

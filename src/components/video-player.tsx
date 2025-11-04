@@ -21,8 +21,15 @@ import {
 import { SmartSkipDetector } from './smart-skip/smart-skip-detector';
 import { CrossDeviceSync } from './sync/cross-device-sync';
 import { VideoLoader, type VideoSource, type VideoError } from './video-loader';
+import { VideoLoadError, VideoPlaybackError, NetworkError, createErrorFromUnknown } from '@/lib/errors';
+import { retryVideoLoad } from '@/lib/retry';
+import { useFeature } from '@/lib/graceful-degradation';
+import { useErrorToast } from './error-toast';
+import { errorLogger } from '@/lib/error-logger';
+import { useNetworkStatus } from '@/hooks/use-network-status';
+import { NetworkStatusIndicator } from './network-status-indicator';
 import dynamic from 'next/dynamic';
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo, useReducer, memo } from 'react';
 
 // Dynamic import for LazyIframe to avoid SSR issues
 const LazyIframe = dynamic(() => import('@/components/lazy-iframe').then(mod => ({ default: mod.LazyIframe })), {
@@ -45,78 +52,267 @@ import {
 } from './ui/dropdown-menu';
 
 interface VideoPlayerProps {
-  video: Video;
-  className?: string;
-  enableAnalytics?: boolean;
+   video: Video;
+   className?: string;
+   enableAnalytics?: boolean;
+ }
+
+// Player state reducer
+interface PlayerState {
+   isPlaying: boolean;
+   volume: number;
+   isMuted: boolean;
+   progress: number;
+   duration: number;
+   isFullscreen: boolean;
+   showControls: boolean;
+   playbackRate: number;
+   quality: string;
+   isLooping: boolean;
+   volumeIndicator: number | null;
+   seekIndicator: 'forward' | 'backward' | null;
+   error: VideoError | null;
+   currentVideoSource: VideoSource | null;
+   subtitlesEnabled: boolean;
+   availableSubtitles: string[];
+   currentSubtitle: string;
+   availableAudioTracks: Array<{ id: string; label: string; language: string }>;
+   currentAudioTrack: string;
+   audioTracksEnabled: boolean;
+   pipSupported: boolean;
 }
 
-export function VideoPlayer({ video, className, enableAnalytics = true }: VideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const playerContainerRef = useRef<HTMLDivElement | null>(null);
-  const { ref: inViewRef, inView } = useInView({
-    threshold: 0.1,
-    triggerOnce: true,
-  });
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const [playbackRate, setPlaybackRate] = useState(1);
-  const [quality, setQuality] = useState('Auto');
-  const [isLooping, setIsLooping] = useState(false);
-  const [volumeIndicator, setVolumeIndicator] = useState<number | null>(null);
-  const [seekIndicator, setSeekIndicator] = useState<'forward' | 'backward' | null>(null);
-  const [gestureStartY, setGestureStartY] = useState<number | null>(null);
-  const [gestureStartX, setGestureStartX] = useState<number | null>(null);
-  const [error, setError] = useState<VideoError | null>(null);
-  const [currentVideoSource, setCurrentVideoSource] = useState<VideoSource | null>(null);
-  const [analytics, setAnalytics] = useState({
-    playCount: 0,
-    totalWatchTime: 0,
-    lastPlayTime: null as Date | null,
-    errorCount: 0,
-    bufferingCount: 0,
-    qualityChanges: 0,
-    lastError: null as VideoError | null,
-  });
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
-  const [availableSubtitles, setAvailableSubtitles] = useState<string[]>([]);
-  const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
-  const [pipSupported, setPipSupported] = useState(false);
+type PlayerAction =
+   | { type: 'SET_PLAYING'; payload: boolean }
+   | { type: 'SET_VOLUME'; payload: number }
+   | { type: 'SET_MUTED'; payload: boolean }
+   | { type: 'SET_PROGRESS'; payload: number }
+   | { type: 'SET_DURATION'; payload: number }
+   | { type: 'SET_FULLSCREEN'; payload: boolean }
+   | { type: 'SET_SHOW_CONTROLS'; payload: boolean }
+   | { type: 'SET_PLAYBACK_RATE'; payload: number }
+   | { type: 'SET_QUALITY'; payload: string }
+   | { type: 'SET_LOOPING'; payload: boolean }
+   | { type: 'SET_VOLUME_INDICATOR'; payload: number | null }
+   | { type: 'SET_SEEK_INDICATOR'; payload: 'forward' | 'backward' | null }
+   | { type: 'SET_ERROR'; payload: VideoError | null }
+   | { type: 'SET_CURRENT_VIDEO_SOURCE'; payload: VideoSource | null }
+   | { type: 'SET_SUBTITLES_ENABLED'; payload: boolean }
+   | { type: 'SET_AVAILABLE_SUBTITLES'; payload: string[] }
+   | { type: 'SET_CURRENT_SUBTITLE'; payload: string }
+   | { type: 'SET_AVAILABLE_AUDIO_TRACKS'; payload: Array<{ id: string; label: string; language: string }> }
+   | { type: 'SET_CURRENT_AUDIO_TRACK'; payload: string }
+   | { type: 'SET_AUDIO_TRACKS_ENABLED'; payload: boolean }
+   | { type: 'SET_PIP_SUPPORTED'; payload: boolean };
 
-  // Multi-track audio states
-  const [availableAudioTracks, setAvailableAudioTracks] = useState<Array<{ id: string; label: string; language: string }>>([]);
-  const [currentAudioTrack, setCurrentAudioTrack] = useState<string>('');
-  const [audioTracksEnabled, setAudioTracksEnabled] = useState(true);
+const playerReducer = (state: PlayerState, action: PlayerAction): PlayerState => {
+   switch (action.type) {
+      case 'SET_PLAYING':
+         return { ...state, isPlaying: action.payload };
+      case 'SET_VOLUME':
+         return { ...state, volume: action.payload, isMuted: action.payload === 0 };
+      case 'SET_MUTED':
+         return { ...state, isMuted: action.payload };
+      case 'SET_PROGRESS':
+         return { ...state, progress: action.payload };
+      case 'SET_DURATION':
+         return { ...state, duration: action.payload };
+      case 'SET_FULLSCREEN':
+         return { ...state, isFullscreen: action.payload };
+      case 'SET_SHOW_CONTROLS':
+         return { ...state, showControls: action.payload };
+      case 'SET_PLAYBACK_RATE':
+         return { ...state, playbackRate: action.payload };
+      case 'SET_QUALITY':
+         return { ...state, quality: action.payload };
+      case 'SET_LOOPING':
+         return { ...state, isLooping: action.payload };
+      case 'SET_VOLUME_INDICATOR':
+         return { ...state, volumeIndicator: action.payload };
+      case 'SET_SEEK_INDICATOR':
+         return { ...state, seekIndicator: action.payload };
+      case 'SET_ERROR':
+         return { ...state, error: action.payload };
+      case 'SET_CURRENT_VIDEO_SOURCE':
+         return { ...state, currentVideoSource: action.payload };
+      case 'SET_SUBTITLES_ENABLED':
+         return { ...state, subtitlesEnabled: action.payload };
+      case 'SET_AVAILABLE_SUBTITLES':
+         return { ...state, availableSubtitles: action.payload };
+      case 'SET_CURRENT_SUBTITLE':
+         return { ...state, currentSubtitle: action.payload };
+      case 'SET_AVAILABLE_AUDIO_TRACKS':
+         return { ...state, availableAudioTracks: action.payload };
+      case 'SET_CURRENT_AUDIO_TRACK':
+         return { ...state, currentAudioTrack: action.payload };
+      case 'SET_AUDIO_TRACKS_ENABLED':
+         return { ...state, audioTracksEnabled: action.payload };
+      case 'SET_PIP_SUPPORTED':
+         return { ...state, pipSupported: action.payload };
+      default:
+         return state;
+   }
+};
 
-  // Enhanced gesture states
-  const [brightness, setBrightness] = useState(1);
-  const [gestureIndicator, setGestureIndicator] = useState<{
-    type: 'volume' | 'brightness' | 'seek' | 'speed' | null;
-    value: number;
-    position: { x: number; y: number };
-  } | null>(null);
-  const [doubleTapIndicator, setDoubleTapIndicator] = useState<{
-    type: 'forward' | 'backward' | 'play' | null;
-    position: { x: number; y: number };
-  } | null>(null);
-  const [threeFingerGesture, setThreeFingerGesture] = useState<{
-    type: 'screenshot' | 'settings' | null;
-  } | null>(null);
-  const [shakeGesture, setShakeGesture] = useState(false);
-  const [pinchGesture, setPinchGesture] = useState<{
-    scale: number;
-    center: { x: number; y: number };
-  } | null>(null);
+// Analytics state reducer with debouncing
+interface AnalyticsState {
+   playCount: number;
+   totalWatchTime: number;
+   lastPlayTime: Date | null;
+   errorCount: number;
+   bufferingCount: number;
+   qualityChanges: number;
+   lastError: VideoError | null;
+}
+
+type AnalyticsAction =
+   | { type: 'INCREMENT_PLAY_COUNT'; payload: Date }
+   | { type: 'ADD_WATCH_TIME'; payload: number }
+   | { type: 'INCREMENT_ERROR_COUNT'; payload: VideoError }
+   | { type: 'INCREMENT_BUFFERING_COUNT' }
+   | { type: 'INCREMENT_QUALITY_CHANGES' };
+
+const analyticsReducer = (state: AnalyticsState, action: AnalyticsAction): AnalyticsState => {
+   switch (action.type) {
+      case 'INCREMENT_PLAY_COUNT':
+         return { ...state, playCount: state.playCount + 1, lastPlayTime: action.payload };
+      case 'ADD_WATCH_TIME':
+         return { ...state, totalWatchTime: state.totalWatchTime + action.payload };
+      case 'INCREMENT_ERROR_COUNT':
+         return { ...state, errorCount: state.errorCount + 1, lastError: action.payload };
+      case 'INCREMENT_BUFFERING_COUNT':
+         return { ...state, bufferingCount: state.bufferingCount + 1 };
+      case 'INCREMENT_QUALITY_CHANGES':
+         return { ...state, qualityChanges: state.qualityChanges + 1 };
+      default:
+         return state;
+   }
+};
+
+// Gesture state reducer
+interface GestureState {
+   gestureStartY: number | null;
+   gestureStartX: number | null;
+   brightness: number;
+   gestureIndicator: {
+      type: 'volume' | 'brightness' | 'seek' | 'speed' | null;
+      value: number;
+      position: { x: number; y: number };
+   } | null;
+   doubleTapIndicator: {
+      type: 'forward' | 'backward' | 'play' | null;
+      position: { x: number; y: number };
+   } | null;
+   threeFingerGesture: {
+      type: 'screenshot' | 'settings' | null;
+   } | null;
+   shakeGesture: boolean;
+   pinchGesture: {
+      scale: number;
+      center: { x: number; y: number };
+   } | null;
+}
+
+type GestureAction =
+   | { type: 'SET_GESTURE_START'; payload: { x: number | null; y: number | null } }
+   | { type: 'SET_BRIGHTNESS'; payload: number }
+   | { type: 'SET_GESTURE_INDICATOR'; payload: GestureState['gestureIndicator'] }
+   | { type: 'SET_DOUBLE_TAP_INDICATOR'; payload: GestureState['doubleTapIndicator'] }
+   | { type: 'SET_THREE_FINGER_GESTURE'; payload: GestureState['threeFingerGesture'] }
+   | { type: 'SET_SHAKE_GESTURE'; payload: boolean }
+   | { type: 'SET_PINCH_GESTURE'; payload: GestureState['pinchGesture'] };
+
+const gestureReducer = (state: GestureState, action: GestureAction): GestureState => {
+   switch (action.type) {
+      case 'SET_GESTURE_START':
+         return { ...state, gestureStartX: action.payload.x, gestureStartY: action.payload.y };
+      case 'SET_BRIGHTNESS':
+         return { ...state, brightness: action.payload };
+      case 'SET_GESTURE_INDICATOR':
+         return { ...state, gestureIndicator: action.payload };
+      case 'SET_DOUBLE_TAP_INDICATOR':
+         return { ...state, doubleTapIndicator: action.payload };
+      case 'SET_THREE_FINGER_GESTURE':
+         return { ...state, threeFingerGesture: action.payload };
+      case 'SET_SHAKE_GESTURE':
+         return { ...state, shakeGesture: action.payload };
+      case 'SET_PINCH_GESTURE':
+         return { ...state, pinchGesture: action.payload };
+      default:
+         return state;
+   }
+};
+
+const VideoPlayer = memo(function VideoPlayer({ video, className, enableAnalytics = true }: VideoPlayerProps) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const playerContainerRef = useRef<HTMLDivElement | null>(null);
+    const { ref: inViewRef, inView } = useInView({
+      threshold: 0.1,
+      triggerOnce: true,
+    });
+
+    // Feature detection for graceful degradation
+    const { isAvailable: isVideoPlaybackAvailable } = useFeature('video-playback');
+    const { isAvailable: isPiPAvailable } = useFeature('picture-in-picture');
+    const { isAvailable: isFullscreenAvailable } = useFeature('fullscreen');
+    const { showErrorToast } = useErrorToast();
+    const { isOnline, isSlowConnection } = useNetworkStatus();
+
+   // Initialize player state with useReducer
+   const [playerState, dispatchPlayer] = useReducer(playerReducer, {
+      isPlaying: false,
+      volume: 1,
+      isMuted: false,
+      progress: 0,
+      duration: 0,
+      isFullscreen: false,
+      showControls: true,
+      playbackRate: 1,
+      quality: 'Auto',
+      isLooping: false,
+      volumeIndicator: null,
+      seekIndicator: null,
+      error: null,
+      currentVideoSource: null,
+      subtitlesEnabled: false,
+      availableSubtitles: [],
+      currentSubtitle: '',
+      availableAudioTracks: [],
+      currentAudioTrack: '',
+      audioTracksEnabled: true,
+      pipSupported: false,
+   });
+
+   // Initialize analytics state with useReducer
+   const [analyticsState, dispatchAnalytics] = useReducer(analyticsReducer, {
+      playCount: 0,
+      totalWatchTime: 0,
+      lastPlayTime: null,
+      errorCount: 0,
+      bufferingCount: 0,
+      qualityChanges: 0,
+      lastError: null,
+   });
+
+   // Initialize gesture state with useReducer
+   const [gestureState, dispatchGesture] = useReducer(gestureReducer, {
+      gestureStartY: null,
+      gestureStartX: null,
+      brightness: 1,
+      gestureIndicator: null,
+      doubleTapIndicator: null,
+      threeFingerGesture: null,
+      shakeGesture: false,
+      pinchGesture: null,
+   });
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTapRef = useRef<number>(0);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const watchStartTimeRef = useRef<number | null>(null);
   const bufferingStartTimeRef = useRef<number | null>(null);
+  const analyticsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const deviceMotionHandlerRef = useRef<((e: DeviceMotionEvent) => void) | null>(null);
   const { toast } = useToast();
 
   // Create video sources from video data with enhanced validation
@@ -162,127 +358,164 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
     return sources;
   }, [video.videoUrl, video.iframe_code, video.title, video.id]);
 
-  const hideControls = () => {
+  // Memoize expensive computations to prevent unnecessary re-renders
+  const memoizedControlsVisibility = useMemo(() => playerState.showControls || !playerState.isPlaying, [playerState.showControls, playerState.isPlaying]);
+  const memoizedVolumeDisplay = useMemo(() => playerState.isMuted ? 0 : playerState.volume, [playerState.isMuted, playerState.volume]);
+  const memoizedTimeDisplay = useMemo(() => `${formatTime(playerState.progress)} / ${formatTime(playerState.duration)}`, [playerState.progress, playerState.duration]);
+
+  const hideControls = useCallback(() => {
     if (videoRef.current && !videoRef.current.paused) {
-      setShowControls(false);
+      dispatchPlayer({ type: 'SET_SHOW_CONTROLS', payload: false });
     }
-  };
+  }, []);
 
   const showAndAutoHideControls = useCallback(() => {
-    setShowControls(true);
+    dispatchPlayer({ type: 'SET_SHOW_CONTROLS', payload: true });
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = setTimeout(hideControls, 3000);
+  }, [hideControls]);
+
+  // Debounced analytics update function
+  const debouncedAnalyticsUpdate = useCallback((action: AnalyticsAction) => {
+    if (analyticsTimeoutRef.current) {
+      clearTimeout(analyticsTimeoutRef.current);
+    }
+    analyticsTimeoutRef.current = setTimeout(() => {
+      dispatchAnalytics(action);
+    }, 500); // Debounce analytics updates by 500ms
   }, []);
 
-  const togglePlay = useCallback(() => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
+  const togglePlay = useCallback(async () => {
+    if (!videoRef.current) return;
+
+    if (videoRef.current.paused) {
+      try {
         const playPromise = videoRef.current.play();
         if (playPromise !== undefined) {
-          playPromise.then(() => {
-            setIsPlaying(true);
-            if (enableAnalytics) {
-              setAnalytics(prev => ({
-                ...prev,
-                playCount: prev.playCount + 1,
-                lastPlayTime: new Date()
-              }));
-              watchStartTimeRef.current = Date.now();
-            }
-          }).catch((error) => {
-            console.error('Error playing video:', error);
-            const videoError: VideoError = {
-              type: 'network',
-              message: 'Unable to play the video. Please try again.',
-              details: error
-            };
-            setError(videoError);
-            if (enableAnalytics) {
-              setAnalytics(prev => ({
-                ...prev,
-                errorCount: prev.errorCount + 1,
-                lastError: videoError
-              }));
-            }
-            toast({
-              variant: 'destructive',
-              title: 'Playback Error',
-              description: videoError.message,
-            });
-          });
+          await playPromise;
+          dispatchPlayer({ type: 'SET_PLAYING', payload: true });
+          if (enableAnalytics) {
+            debouncedAnalyticsUpdate({ type: 'INCREMENT_PLAY_COUNT', payload: new Date() });
+            watchStartTimeRef.current = Date.now();
+          }
         }
-      } else {
-        videoRef.current.pause();
-        setIsPlaying(false);
-        if (enableAnalytics && watchStartTimeRef.current) {
-          const watchTime = (Date.now() - watchStartTimeRef.current) / 1000;
-          setAnalytics(prev => ({
-            ...prev,
-            totalWatchTime: prev.totalWatchTime + watchTime
-          }));
-          watchStartTimeRef.current = null;
-        }
-      }
-      showAndAutoHideControls();
-    }
-  }, [showAndAutoHideControls, toast, enableAnalytics]);
+      } catch (error) {
+        const isNetworkError = !isOnline || error instanceof NetworkError;
+        const errorMessage = isNetworkError
+          ? 'Network connection issue. Please check your internet and try again.'
+          : 'Unable to play the video. Please try again.';
 
-  const handleVolumeChange = (value: number[]) => {
+        const videoError = new VideoPlaybackError(
+          errorMessage,
+          {
+            details: error,
+            component: 'VideoPlayer',
+            action: 'togglePlay',
+            context: { videoId: video.id, videoUrl: video.videoUrl, isOnline, isSlowConnection }
+          }
+        );
+
+        // Convert to VideoError format for state
+        const stateError: VideoError = {
+          type: isNetworkError ? 'network' : 'unknown',
+          message: errorMessage,
+          details: error
+        };
+
+        dispatchPlayer({ type: 'SET_ERROR', payload: stateError });
+        if (enableAnalytics) {
+          debouncedAnalyticsUpdate({ type: 'INCREMENT_ERROR_COUNT', payload: stateError });
+        }
+
+        showErrorToast(videoError, {
+          onRetry: () => {
+            dispatchPlayer({ type: 'SET_ERROR', payload: null });
+            togglePlay();
+          }
+        });
+      }
+    } else {
+      videoRef.current.pause();
+      dispatchPlayer({ type: 'SET_PLAYING', payload: false });
+      if (enableAnalytics && watchStartTimeRef.current) {
+        const watchTime = (Date.now() - watchStartTimeRef.current) / 1000;
+        debouncedAnalyticsUpdate({ type: 'ADD_WATCH_TIME', payload: watchTime });
+        watchStartTimeRef.current = null;
+      }
+    }
+    showAndAutoHideControls();
+  }, [showAndAutoHideControls, enableAnalytics, debouncedAnalyticsUpdate, video.id, video.videoUrl, showErrorToast]);
+
+  const handleVolumeChange = useCallback((value: number[]) => {
     if (videoRef.current) {
       const newVolume = value[0];
       videoRef.current.volume = newVolume;
       videoRef.current.muted = newVolume === 0;
-      setVolume(newVolume);
-      setIsMuted(newVolume === 0);
+      dispatchPlayer({ type: 'SET_VOLUME', payload: newVolume });
     }
-  };
+  }, []);
 
-  const showVolumeIndicator = (newVolume: number) => {
-    setVolumeIndicator(newVolume * 100);
-    setTimeout(() => setVolumeIndicator(null), 1000);
-  };
-  
+  const volumeIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showVolumeIndicator = useCallback((newVolume: number) => {
+    if (volumeIndicatorTimeoutRef.current) {
+      clearTimeout(volumeIndicatorTimeoutRef.current);
+    }
+    dispatchPlayer({ type: 'SET_VOLUME_INDICATOR', payload: newVolume * 100 });
+    volumeIndicatorTimeoutRef.current = setTimeout(() => {
+      dispatchPlayer({ type: 'SET_VOLUME_INDICATOR', payload: null });
+      volumeIndicatorTimeoutRef.current = null;
+    }, 1000);
+  }, []);
+
   const changeVolume = useCallback((amount: number) => {
     if (videoRef.current) {
       const newVolume = Math.max(0, Math.min(1, videoRef.current.volume + amount));
       videoRef.current.volume = newVolume;
-      setVolume(newVolume);
-      setIsMuted(newVolume === 0);
+      dispatchPlayer({ type: 'SET_VOLUME', payload: newVolume });
       showVolumeIndicator(newVolume);
     }
-  }, []);
+  }, [showVolumeIndicator]);
 
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     if (videoRef.current) {
       const newMuted = !videoRef.current.muted;
       videoRef.current.muted = newMuted;
-      setIsMuted(newMuted);
+      dispatchPlayer({ type: 'SET_MUTED', payload: newMuted });
       if (newMuted) {
         showVolumeIndicator(0);
       } else {
         showVolumeIndicator(videoRef.current.volume);
       }
     }
-  };
+  }, [showVolumeIndicator]);
+
+  const seekIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const seek = useCallback((amount: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime += amount;
-      setSeekIndicator(amount > 0 ? 'forward' : 'backward');
-      setTimeout(() => setSeekIndicator(null), 500);
+      if (seekIndicatorTimeoutRef.current) {
+        clearTimeout(seekIndicatorTimeoutRef.current);
+      }
+      dispatchPlayer({ type: 'SET_SEEK_INDICATOR', payload: amount > 0 ? 'forward' : 'backward' });
+      seekIndicatorTimeoutRef.current = setTimeout(() => {
+        dispatchPlayer({ type: 'SET_SEEK_INDICATOR', payload: null });
+        seekIndicatorTimeoutRef.current = null;
+      }, 500);
     }
   }, []);
 
-  const handleProgressChange = (value: number[]) => {
+  const handleProgressChange = useCallback((value: number[]) => {
     if (videoRef.current) {
       const newTime = value[0];
       videoRef.current.currentTime = newTime;
-      setProgress(newTime);
+      dispatchPlayer({ type: 'SET_PROGRESS', payload: newTime });
     }
-  };
+  }, []);
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return '0:00';
@@ -291,35 +524,63 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
-  const toggleFullscreen = useCallback(() => {
+  const toggleFullscreen = useCallback(async () => {
+    if (!isFullscreenAvailable) {
+      showErrorToast(new VideoPlaybackError('Fullscreen is not supported in this browser'));
+      return;
+    }
+
     const container = playerContainerRef.current;
     if (!container) return;
 
-    if (!document.fullscreenElement) {
-      container.requestFullscreen().catch(console.error);
-    } else {
-      document.exitFullscreen().catch(console.error);
+    try {
+      if (!document.fullscreenElement) {
+        await container.requestFullscreen();
+        dispatchPlayer({ type: 'SET_FULLSCREEN', payload: true });
+      } else {
+        await document.exitFullscreen();
+        dispatchPlayer({ type: 'SET_FULLSCREEN', payload: false });
+      }
+    } catch (error) {
+      const fullscreenError = new VideoPlaybackError(
+        'Failed to toggle fullscreen mode',
+        { details: error, component: 'VideoPlayer', action: 'toggleFullscreen' }
+      );
+      showErrorToast(fullscreenError);
     }
-  }, []);
+  }, [isFullscreenAvailable, showErrorToast]);
 
   const togglePiP = useCallback(async () => {
+    if (!isPiPAvailable) {
+      showErrorToast(new VideoPlaybackError('Picture-in-Picture is not supported in this browser'));
+      return;
+    }
+
     if (videoRef.current) {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture().catch(console.error);
-      } else {
-        await videoRef.current.requestPictureInPicture().catch(console.error);
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else {
+          await videoRef.current.requestPictureInPicture();
+        }
+      } catch (error) {
+        const pipError = new VideoPlaybackError(
+          'Failed to toggle Picture-in-Picture mode',
+          { details: error, component: 'VideoPlayer', action: 'togglePiP' }
+        );
+        showErrorToast(pipError);
       }
+    }
+  }, [isPiPAvailable, showErrorToast]);
+
+  const handlePlaybackRateChange = useCallback((rate: number) => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = rate;
+      dispatchPlayer({ type: 'SET_PLAYBACK_RATE', payload: rate });
     }
   }, []);
 
-  const handlePlaybackRateChange = (rate: number) => {
-    if (videoRef.current) {
-      videoRef.current.playbackRate = rate;
-      setPlaybackRate(rate);
-    }
-  };
-
-  const handleTap = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleTap = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const now = new Date().getTime();
     const rect = e.currentTarget.getBoundingClientRect();
     const tapX = e.clientX - rect.left;
@@ -329,63 +590,82 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
       // Double tap - enhanced gesture control
       if (tapX < rect.width / 3) {
         seek(-10); // Seek backward
-        setDoubleTapIndicator({
-          type: 'backward',
-          position: { x: tapX, y: tapY }
+        dispatchGesture({
+          type: 'SET_DOUBLE_TAP_INDICATOR',
+          payload: { type: 'backward', position: { x: tapX, y: tapY } }
         });
       } else if (tapX > (rect.width * 2) / 3) {
         seek(10); // Seek forward
-        setDoubleTapIndicator({
-          type: 'forward',
-          position: { x: tapX, y: tapY }
+        dispatchGesture({
+          type: 'SET_DOUBLE_TAP_INDICATOR',
+          payload: { type: 'forward', position: { x: tapX, y: tapY } }
         });
       } else {
         togglePlay();
-        setDoubleTapIndicator({
-          type: 'play',
-          position: { x: tapX, y: tapY }
+        dispatchGesture({
+          type: 'SET_DOUBLE_TAP_INDICATOR',
+          payload: { type: 'play', position: { x: tapX, y: tapY } }
         });
       }
-      setTimeout(() => setDoubleTapIndicator(null), 1000);
+      setTimeout(() => dispatchGesture({ type: 'SET_DOUBLE_TAP_INDICATOR', payload: null }), 1000);
       lastTapRef.current = 0; // Reset tap timer
     } else {
       // Single tap
-      setShowControls((s) => !s);
+      dispatchPlayer({ type: 'SET_SHOW_CONTROLS', payload: !playerState.showControls });
     }
     lastTapRef.current = now;
-  };
+  }, [seek, togglePlay, playerState.showControls]);
   
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    setGestureStartX(e.clientX);
-    setGestureStartY(e.clientY);
+  const gestureIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    dispatchGesture({
+      type: 'SET_GESTURE_START',
+      payload: { x: e.clientX, y: e.clientY }
+    });
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+    }
     longPressTimeoutRef.current = setTimeout(() => {
         if(videoRef.current) {
             videoRef.current.playbackRate = 2;
-            setGestureIndicator({
-              type: 'speed',
-              value: 200,
-              position: { x: e.clientX - e.currentTarget.getBoundingClientRect().left, y: e.clientY - e.currentTarget.getBoundingClientRect().top }
+            if (gestureIndicatorTimeoutRef.current) {
+              clearTimeout(gestureIndicatorTimeoutRef.current);
+            }
+            dispatchGesture({
+              type: 'SET_GESTURE_INDICATOR',
+              payload: {
+                type: 'speed',
+                value: 200,
+                position: { x: e.clientX - e.currentTarget.getBoundingClientRect().left, y: e.clientY - e.currentTarget.getBoundingClientRect().top }
+              }
             });
-            setTimeout(() => setGestureIndicator(null), 1000);
+            gestureIndicatorTimeoutRef.current = setTimeout(() => {
+              dispatchGesture({ type: 'SET_GESTURE_INDICATOR', payload: null });
+              gestureIndicatorTimeoutRef.current = null;
+            }, 1000);
         }
     }, 500);
-  };
+  }, []);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
       if (longPressTimeoutRef.current) {
           clearTimeout(longPressTimeoutRef.current);
+          longPressTimeoutRef.current = null;
       }
       if(videoRef.current) {
-          videoRef.current.playbackRate = playbackRate;
+          videoRef.current.playbackRate = playerState.playbackRate;
       }
-      setGestureStartX(null);
-      setGestureStartY(null);
-  };
+      dispatchGesture({
+        type: 'SET_GESTURE_START',
+        payload: { x: null, y: null }
+      });
+  }, [playerState.playbackRate]);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (gestureStartX !== null && gestureStartY !== null) {
-      const deltaX = e.clientX - gestureStartX;
-      const deltaY = e.clientY - gestureStartY;
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (gestureState.gestureStartX !== null && gestureState.gestureStartY !== null) {
+      const deltaX = e.clientX - gestureState.gestureStartX;
+      const deltaY = e.clientY - gestureState.gestureStartY;
       const rect = e.currentTarget.getBoundingClientRect();
       const relativeX = e.clientX - rect.left;
       const relativeY = e.clientY - rect.top;
@@ -396,13 +676,25 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
       if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
         const seekAmount = Math.floor(deltaX / 10);
         seek(seekAmount);
-        setGestureIndicator({
-          type: 'seek',
-          value: seekAmount,
-          position: { x: relativeX, y: relativeY }
+        if (gestureIndicatorTimeoutRef.current) {
+          clearTimeout(gestureIndicatorTimeoutRef.current);
+        }
+        dispatchGesture({
+          type: 'SET_GESTURE_INDICATOR',
+          payload: {
+            type: 'seek',
+            value: seekAmount,
+            position: { x: relativeX, y: relativeY }
+          }
         });
-        setTimeout(() => setGestureIndicator(null), 1000);
-        setGestureStartX(e.clientX);
+        gestureIndicatorTimeoutRef.current = setTimeout(() => {
+          dispatchGesture({ type: 'SET_GESTURE_INDICATOR', payload: null });
+          gestureIndicatorTimeoutRef.current = null;
+        }, 1000);
+        dispatchGesture({
+          type: 'SET_GESTURE_START',
+          payload: { x: e.clientX, y: gestureState.gestureStartY }
+        });
       }
 
       // Vertical swipe on sides for volume/brightness
@@ -411,29 +703,51 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
           // Right side: volume control
           const volumeChange = deltaY > 0 ? -0.05 : 0.05;
           changeVolume(volumeChange);
-          setGestureIndicator({
-            type: 'volume',
-            value: volume * 100,
-            position: { x: relativeX, y: relativeY }
+          if (gestureIndicatorTimeoutRef.current) {
+            clearTimeout(gestureIndicatorTimeoutRef.current);
+          }
+          dispatchGesture({
+            type: 'SET_GESTURE_INDICATOR',
+            payload: {
+              type: 'volume',
+              value: playerState.volume * 100,
+              position: { x: relativeX, y: relativeY }
+            }
           });
+          gestureIndicatorTimeoutRef.current = setTimeout(() => {
+            dispatchGesture({ type: 'SET_GESTURE_INDICATOR', payload: null });
+            gestureIndicatorTimeoutRef.current = null;
+          }, 1000);
         } else if (isLeftSide) {
           // Left side: brightness control
-          const newBrightness = Math.max(0.1, Math.min(2, brightness + (deltaY > 0 ? -0.1 : 0.1)));
-          setBrightness(newBrightness);
+          const newBrightness = Math.max(0.1, Math.min(2, gestureState.brightness + (deltaY > 0 ? -0.1 : 0.1)));
+          dispatchGesture({ type: 'SET_BRIGHTNESS', payload: newBrightness });
           // Apply brightness to video container
           const container = e.currentTarget as HTMLElement;
           container.style.filter = `brightness(${newBrightness})`;
-          setGestureIndicator({
-            type: 'brightness',
-            value: newBrightness * 50,
-            position: { x: relativeX, y: relativeY }
+          if (gestureIndicatorTimeoutRef.current) {
+            clearTimeout(gestureIndicatorTimeoutRef.current);
+          }
+          dispatchGesture({
+            type: 'SET_GESTURE_INDICATOR',
+            payload: {
+              type: 'brightness',
+              value: newBrightness * 50,
+              position: { x: relativeX, y: relativeY }
+            }
           });
+          gestureIndicatorTimeoutRef.current = setTimeout(() => {
+            dispatchGesture({ type: 'SET_GESTURE_INDICATOR', payload: null });
+            gestureIndicatorTimeoutRef.current = null;
+          }, 1000);
         }
-        setTimeout(() => setGestureIndicator(null), 1000);
-        setGestureStartY(e.clientY);
+        dispatchGesture({
+          type: 'SET_GESTURE_START',
+          payload: { x: gestureState.gestureStartX, y: e.clientY }
+        });
       }
     }
-  };
+  }, [gestureState.gestureStartX, gestureState.gestureStartY, gestureState.brightness, playerState.volume, seek, changeVolume]);
   
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
        if ((e.target as HTMLElement).tagName === 'INPUT') return;
@@ -472,13 +786,13 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
            break;
          case '>':
            if (e.shiftKey && videoRef.current) {
-             const newRate = Math.min(playbackRate * 2, 4);
+             const newRate = Math.min(playerState.playbackRate * 2, 4);
              handlePlaybackRateChange(newRate);
            }
            break;
          case '<':
            if (e.shiftKey && videoRef.current) {
-             const newRate = Math.max(playbackRate / 2, 0.25);
+             const newRate = Math.max(playerState.playbackRate / 2, 0.25);
              handlePlaybackRateChange(newRate);
            }
            break;
@@ -495,14 +809,14 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
            }
            break;
        }
-   }, [togglePlay, toggleFullscreen, togglePiP, seek, changeVolume, playbackRate]);
+   }, [togglePlay, toggleFullscreen, togglePiP, seek, changeVolume, playerState.playbackRate, handlePlaybackRateChange]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const updateProgress = () => setProgress(video.currentTime);
-    const setVideoDuration = () => setDuration(video.duration);
+    const updateProgress = () => dispatchPlayer({ type: 'SET_PROGRESS', payload: video.currentTime });
+    const setVideoDuration = () => dispatchPlayer({ type: 'SET_DURATION', payload: video.duration });
     const handleError = (e: Event) => {
       const target = e.target as HTMLVideoElement;
       const errorCode = target.error?.code;
@@ -538,14 +852,18 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
         details: target.error
       };
 
-      setError(videoError);
+      const legacyVideoError: VideoError = {
+        type: 'network',
+        message: videoError.message,
+        details: videoError
+      };
+      dispatchPlayer({ type: 'SET_ERROR', payload: legacyVideoError });
       if (enableAnalytics) {
-        setAnalytics(prev => ({
-          ...prev,
-          errorCount: prev.errorCount + 1,
-          lastError: videoError
-        }));
+        debouncedAnalyticsUpdate({ type: 'INCREMENT_ERROR_COUNT', payload: legacyVideoError });
       }
+
+      // Log the error
+      errorLogger.logError(createErrorFromUnknown(videoError));
 
       toast({
         variant: 'destructive',
@@ -555,27 +873,33 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
     };
 
     const handleWaiting = () => {
-      if (enableAnalytics && !bufferingStartTimeRef.current) {
-        bufferingStartTimeRef.current = Date.now();
-      }
-    };
-
-    const handlePlaying = () => {
-      if (enableAnalytics && bufferingStartTimeRef.current) {
-        const bufferingTime = Date.now() - bufferingStartTimeRef.current;
-        setAnalytics(prev => ({
-          ...prev,
-          bufferingCount: prev.bufferingCount + 1
-        }));
-        bufferingStartTimeRef.current = null;
-      }
-    };
+        if (enableAnalytics && !bufferingStartTimeRef.current) {
+          bufferingStartTimeRef.current = Date.now();
+        }
+  
+        // Show buffering indicator for slow connections
+        if (isSlowConnection && !isOnline) {
+          toast({
+            title: "Buffering",
+            description: "Slow connection detected. Video may buffer frequently.",
+            duration: 3000,
+          });
+        }
+      };
+  
+      const handlePlaying = () => {
+        if (enableAnalytics && bufferingStartTimeRef.current) {
+          const bufferingTime = Date.now() - bufferingStartTimeRef.current;
+          debouncedAnalyticsUpdate({ type: 'INCREMENT_BUFFERING_COUNT' });
+          bufferingStartTimeRef.current = null;
+        }
+      };
 
     // Check for subtitle tracks
     const checkSubtitles = () => {
       const tracks = Array.from(video.textTracks || []);
       const subtitleTracks = tracks.filter(track => track.kind === 'subtitles');
-      setAvailableSubtitles(subtitleTracks.map(track => track.label || track.language));
+      dispatchPlayer({ type: 'SET_AVAILABLE_SUBTITLES', payload: subtitleTracks.map(track => track.label || track.language) });
     };
 
     // Check for audio tracks (using WebVTT or similar for demo purposes)
@@ -586,30 +910,30 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
         { id: 'original', label: 'Original Audio', language: 'en' },
         { id: 'dubbed', label: 'Dubbed Audio', language: 'en' },
       ];
-      setAvailableAudioTracks(mockAudioTracks);
+      dispatchPlayer({ type: 'SET_AVAILABLE_AUDIO_TRACKS', payload: mockAudioTracks });
 
-      if (mockAudioTracks.length > 0 && !currentAudioTrack) {
-        setCurrentAudioTrack('original');
+      if (mockAudioTracks.length > 0 && !playerState.currentAudioTrack) {
+        dispatchPlayer({ type: 'SET_CURRENT_AUDIO_TRACK', payload: 'original' });
       }
     };
 
     // Check PiP support
-    setPipSupported(document.pictureInPictureEnabled);
+    dispatchPlayer({ type: 'SET_PIP_SUPPORTED', payload: document.pictureInPictureEnabled });
 
     video.addEventListener('timeupdate', updateProgress);
     video.addEventListener('loadedmetadata', setVideoDuration);
     video.addEventListener('loadedmetadata', checkSubtitles);
     video.addEventListener('loadedmetadata', checkAudioTracks);
-    video.addEventListener('play', () => setIsPlaying(true));
-    video.addEventListener('pause', () => setIsPlaying(false));
-    video.addEventListener('ratechange', () => setPlaybackRate(video.playbackRate));
+    video.addEventListener('play', () => dispatchPlayer({ type: 'SET_PLAYING', payload: true }));
+    video.addEventListener('pause', () => dispatchPlayer({ type: 'SET_PLAYING', payload: false }));
+    video.addEventListener('ratechange', () => dispatchPlayer({ type: 'SET_PLAYBACK_RATE', payload: video.playbackRate }));
     video.addEventListener('error', handleError);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
-    video.loop = isLooping;
+    video.loop = playerState.isLooping;
 
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      dispatchPlayer({ type: 'SET_FULLSCREEN', payload: !!document.fullscreenElement });
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
@@ -618,15 +942,15 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
      video.removeEventListener('loadedmetadata', setVideoDuration);
      video.removeEventListener('loadedmetadata', checkSubtitles);
      video.removeEventListener('loadedmetadata', checkAudioTracks);
-     video.removeEventListener('play', () => setIsPlaying(true));
-     video.removeEventListener('pause', () => setIsPlaying(false));
-     video.removeEventListener('ratechange', () => setPlaybackRate(video.playbackRate));
+     video.removeEventListener('play', () => dispatchPlayer({ type: 'SET_PLAYING', payload: true }));
+     video.removeEventListener('pause', () => dispatchPlayer({ type: 'SET_PLAYING', payload: false }));
+     video.removeEventListener('ratechange', () => dispatchPlayer({ type: 'SET_PLAYBACK_RATE', payload: video.playbackRate }));
      video.removeEventListener('error', handleError);
      video.removeEventListener('waiting', handleWaiting);
      video.removeEventListener('playing', handlePlaying);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [isLooping, toast]);
+  }, [playerState.isLooping, toast, enableAnalytics, debouncedAnalyticsUpdate]);
 
   useEffect(() => {
     showAndAutoHideControls();
@@ -637,6 +961,27 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
     return () => {
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = null;
+      }
+      if (analyticsTimeoutRef.current) {
+        clearTimeout(analyticsTimeoutRef.current);
+        analyticsTimeoutRef.current = null;
+      }
+      if (volumeIndicatorTimeoutRef.current) {
+        clearTimeout(volumeIndicatorTimeoutRef.current);
+        volumeIndicatorTimeoutRef.current = null;
+      }
+      if (seekIndicatorTimeoutRef.current) {
+        clearTimeout(seekIndicatorTimeoutRef.current);
+        seekIndicatorTimeoutRef.current = null;
+      }
+      if (gestureIndicatorTimeoutRef.current) {
+        clearTimeout(gestureIndicatorTimeoutRef.current);
+        gestureIndicatorTimeoutRef.current = null;
+      }
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+        longPressTimeoutRef.current = null;
       }
       container?.removeEventListener('keydown', handleKeyDown);
     };
@@ -647,8 +992,8 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
 
   // Video source handlers
   const handleSourceReady = useCallback((source: VideoSource) => {
-    setCurrentVideoSource(source);
-    setError(null);
+    dispatchPlayer({ type: 'SET_CURRENT_VIDEO_SOURCE', payload: source });
+    dispatchPlayer({ type: 'SET_ERROR', payload: null });
     if (enableAnalytics) {
       // Log successful source loading
       console.log('Video source loaded successfully:', source);
@@ -656,33 +1001,28 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
   }, [enableAnalytics]);
 
   const handleSourceError = useCallback((error: VideoError) => {
-    setError(error);
+    dispatchPlayer({ type: 'SET_ERROR', payload: error });
     if (enableAnalytics) {
-      setAnalytics(prev => ({
-        ...prev,
-        errorCount: prev.errorCount + 1,
-        lastError: error
-      }));
+      debouncedAnalyticsUpdate({ type: 'INCREMENT_ERROR_COUNT', payload: error });
     }
-  }, [enableAnalytics]);
+  }, [enableAnalytics, debouncedAnalyticsUpdate]);
 
   // Quality change handler with analytics
   const handleQualityChange = useCallback((newQuality: string) => {
-    setQuality(newQuality);
+    dispatchPlayer({ type: 'SET_QUALITY', payload: newQuality });
     if (enableAnalytics) {
-      setAnalytics(prev => ({
-        ...prev,
-        qualityChanges: prev.qualityChanges + 1
-      }));
+      debouncedAnalyticsUpdate({ type: 'INCREMENT_QUALITY_CHANGES' });
     }
-  }, [enableAnalytics]);
+  }, [enableAnalytics, debouncedAnalyticsUpdate]);
 
   // Touch gesture handlers
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     if (e.touches.length === 1) {
       // Single touch - regular gesture
-      setGestureStartX(e.touches[0].clientX);
-      setGestureStartY(e.touches[0].clientY);
+      dispatchGesture({
+        type: 'SET_GESTURE_START',
+        payload: { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      });
     } else if (e.touches.length === 2) {
       // Two finger touch - potential pinch
       const touch1 = e.touches[0];
@@ -691,23 +1031,26 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
         Math.pow(touch2.clientX - touch1.clientX, 2) +
         Math.pow(touch2.clientY - touch1.clientY, 2)
       );
-      setPinchGesture({
-        scale: 1,
-        center: {
-          x: (touch1.clientX + touch2.clientX) / 2,
-          y: (touch1.clientY + touch2.clientY) / 2
+      dispatchGesture({
+        type: 'SET_PINCH_GESTURE',
+        payload: {
+          scale: 1,
+          center: {
+            x: (touch1.clientX + touch2.clientX) / 2,
+            y: (touch1.clientY + touch2.clientY) / 2
+          }
         }
       });
     } else if (e.touches.length === 3) {
       // Three finger touch - special gesture
-      setThreeFingerGesture({ type: 'screenshot' });
+      dispatchGesture({ type: 'SET_THREE_FINGER_GESTURE', payload: { type: 'screenshot' } });
     }
-  };
+  }, []);
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 1 && gestureStartX !== null && gestureStartY !== null) {
-      const deltaX = e.touches[0].clientX - gestureStartX;
-      const deltaY = e.touches[0].clientY - gestureStartY;
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 1 && gestureState.gestureStartX !== null && gestureState.gestureStartY !== null) {
+      const deltaX = e.touches[0].clientX - gestureState.gestureStartX;
+      const deltaY = e.touches[0].clientY - gestureState.gestureStartY;
       const rect = e.currentTarget.getBoundingClientRect();
       const relativeX = e.touches[0].clientX - rect.left;
       const isLeftSide = relativeX < rect.width * 0.3;
@@ -717,36 +1060,64 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
       if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30) {
         const seekAmount = Math.floor(deltaX / 5);
         seek(seekAmount);
-        setGestureIndicator({
-          type: 'seek',
-          value: seekAmount,
-          position: { x: relativeX, y: e.touches[0].clientY - rect.top }
+        if (gestureIndicatorTimeoutRef.current) {
+          clearTimeout(gestureIndicatorTimeoutRef.current);
+        }
+        dispatchGesture({
+          type: 'SET_GESTURE_INDICATOR',
+          payload: {
+            type: 'seek',
+            value: seekAmount,
+            position: { x: relativeX, y: e.touches[0].clientY - rect.top }
+          }
         });
-        setTimeout(() => setGestureIndicator(null), 1000);
+        gestureIndicatorTimeoutRef.current = setTimeout(() => {
+          dispatchGesture({ type: 'SET_GESTURE_INDICATOR', payload: null });
+          gestureIndicatorTimeoutRef.current = null;
+        }, 1000);
       }
 
       // Vertical swipe for volume/brightness
       if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 20) {
         if (isRightSide) {
           changeVolume(deltaY > 0 ? -0.05 : 0.05);
-          setGestureIndicator({
-            type: 'volume',
-            value: volume * 100,
-            position: { x: relativeX, y: e.touches[0].clientY - rect.top }
+          if (gestureIndicatorTimeoutRef.current) {
+            clearTimeout(gestureIndicatorTimeoutRef.current);
+          }
+          dispatchGesture({
+            type: 'SET_GESTURE_INDICATOR',
+            payload: {
+              type: 'volume',
+              value: playerState.volume * 100,
+              position: { x: relativeX, y: e.touches[0].clientY - rect.top }
+            }
           });
+          gestureIndicatorTimeoutRef.current = setTimeout(() => {
+            dispatchGesture({ type: 'SET_GESTURE_INDICATOR', payload: null });
+            gestureIndicatorTimeoutRef.current = null;
+          }, 1000);
         } else if (isLeftSide) {
-          const newBrightness = Math.max(0.1, Math.min(2, brightness + (deltaY > 0 ? -0.1 : 0.1)));
-          setBrightness(newBrightness);
+          const newBrightness = Math.max(0.1, Math.min(2, gestureState.brightness + (deltaY > 0 ? -0.1 : 0.1)));
+          dispatchGesture({ type: 'SET_BRIGHTNESS', payload: newBrightness });
           e.currentTarget.style.filter = `brightness(${newBrightness})`;
-          setGestureIndicator({
-            type: 'brightness',
-            value: newBrightness * 50,
-            position: { x: relativeX, y: e.touches[0].clientY - rect.top }
+          if (gestureIndicatorTimeoutRef.current) {
+            clearTimeout(gestureIndicatorTimeoutRef.current);
+          }
+          dispatchGesture({
+            type: 'SET_GESTURE_INDICATOR',
+            payload: {
+              type: 'brightness',
+              value: newBrightness * 50,
+              position: { x: relativeX, y: e.touches[0].clientY - rect.top }
+            }
           });
+          gestureIndicatorTimeoutRef.current = setTimeout(() => {
+            dispatchGesture({ type: 'SET_GESTURE_INDICATOR', payload: null });
+            gestureIndicatorTimeoutRef.current = null;
+          }, 1000);
         }
-        setTimeout(() => setGestureIndicator(null), 1000);
       }
-    } else if (e.touches.length === 2 && pinchGesture) {
+    } else if (e.touches.length === 2 && gestureState.pinchGesture) {
       // Handle pinch gesture for zoom
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
@@ -755,37 +1126,42 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
         Math.pow(touch2.clientY - touch1.clientY, 2)
       );
       const scale = distance / 100; // Normalize scale
-      setPinchGesture(prev => prev ? { ...prev, scale } : null);
+      dispatchGesture({
+        type: 'SET_PINCH_GESTURE',
+        payload: gestureState.pinchGesture ? { ...gestureState.pinchGesture, scale } : null
+      });
 
       // Apply zoom to video
       if (videoRef.current) {
         videoRef.current.style.transform = `scale(${scale})`;
       }
     }
-  };
+  }, [gestureState.gestureStartX, gestureState.gestureStartY, gestureState.brightness, gestureState.pinchGesture, playerState.volume, seek, changeVolume]);
 
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     if (e.changedTouches.length === 1) {
-      setGestureStartX(null);
-      setGestureStartY(null);
+      dispatchGesture({
+        type: 'SET_GESTURE_START',
+        payload: { x: null, y: null }
+      });
     }
 
-    if (pinchGesture) {
+    if (gestureState.pinchGesture) {
       // Reset zoom after pinch ends
       if (videoRef.current) {
         videoRef.current.style.transform = 'scale(1)';
       }
-      setPinchGesture(null);
+      dispatchGesture({ type: 'SET_PINCH_GESTURE', payload: null });
     }
 
-    if (threeFingerGesture) {
-      if (threeFingerGesture.type === 'screenshot') {
+    if (gestureState.threeFingerGesture) {
+      if (gestureState.threeFingerGesture.type === 'screenshot') {
         // Take screenshot
         takeScreenshot();
       }
-      setThreeFingerGesture(null);
+      dispatchGesture({ type: 'SET_THREE_FINGER_GESTURE', payload: null });
     }
-  };
+  }, [gestureState.pinchGesture, gestureState.threeFingerGesture]);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -793,44 +1169,47 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
     changeVolume(delta);
   };
 
-  // Device orientation for shake gesture
+  // Simplified shake gesture detection
   useEffect(() => {
-    let lastX = 0, lastY = 0, lastZ = 0;
     let shakeCount = 0;
+    let lastShakeTime = 0;
 
     const handleDeviceMotion = (e: DeviceMotionEvent) => {
       const acceleration = e.accelerationIncludingGravity;
       if (!acceleration) return;
 
-      const deltaX = Math.abs(acceleration.x! - lastX);
-      const deltaY = Math.abs(acceleration.y! - lastY);
-      const deltaZ = Math.abs(acceleration.z! - lastZ);
+      const now = Date.now();
+      if (now - lastShakeTime < 100) return; // Throttle shake detection
 
-      if (deltaX + deltaY + deltaZ > 25) {
+      const totalAcceleration = Math.abs(acceleration.x!) + Math.abs(acceleration.y!) + Math.abs(acceleration.z!);
+
+      if (totalAcceleration > 25) {
         shakeCount++;
-        if (shakeCount > 3) {
-          // Random video gesture
-          setShakeGesture(true);
-          setTimeout(() => setShakeGesture(false), 1000);
-          // Could trigger random video navigation here
+        lastShakeTime = now;
+        if (shakeCount >= 3) {
+          dispatchGesture({ type: 'SET_SHAKE_GESTURE', payload: true });
+          setTimeout(() => dispatchGesture({ type: 'SET_SHAKE_GESTURE', payload: false }), 1000);
           shakeCount = 0;
         }
-      } else {
+      } else if (now - lastShakeTime > 500) {
         shakeCount = Math.max(0, shakeCount - 1);
       }
-
-      lastX = acceleration.x!;
-      lastY = acceleration.y!;
-      lastZ = acceleration.z!;
     };
+
+    deviceMotionHandlerRef.current = handleDeviceMotion;
 
     if (window.DeviceMotionEvent) {
       window.addEventListener('devicemotion', handleDeviceMotion);
-      return () => window.removeEventListener('devicemotion', handleDeviceMotion);
+      return () => {
+        if (deviceMotionHandlerRef.current) {
+          window.removeEventListener('devicemotion', deviceMotionHandlerRef.current);
+          deviceMotionHandlerRef.current = null;
+        }
+      };
     }
   }, []);
 
-  const takeScreenshot = async () => {
+  const takeScreenshot = useCallback(async () => {
     if (videoRef.current) {
       try {
         const canvas = document.createElement('canvas');
@@ -858,21 +1237,21 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
         });
       }
     }
-  };
+  }, [toast]);
 
-  const toggleSubtitles = () => {
+  const toggleSubtitles = useCallback(() => {
     if (videoRef.current) {
       const tracks = videoRef.current.textTracks;
       for (let i = 0; i < tracks.length; i++) {
         if (tracks[i].kind === 'subtitles') {
-          tracks[i].mode = subtitlesEnabled ? 'disabled' : 'showing';
+          tracks[i].mode = playerState.subtitlesEnabled ? 'disabled' : 'showing';
         }
       }
-      setSubtitlesEnabled(!subtitlesEnabled);
+      dispatchPlayer({ type: 'SET_SUBTITLES_ENABLED', payload: !playerState.subtitlesEnabled });
     }
-  };
+  }, [playerState.subtitlesEnabled]);
 
-  const selectSubtitle = (language: string) => {
+  const selectSubtitle = useCallback((language: string) => {
     if (videoRef.current) {
       const tracks = videoRef.current.textTracks;
       for (let i = 0; i < tracks.length; i++) {
@@ -880,27 +1259,27 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
           tracks[i].mode = tracks[i].label === language || tracks[i].language === language ? 'showing' : 'disabled';
         }
       }
-      setCurrentSubtitle(language);
+      dispatchPlayer({ type: 'SET_CURRENT_SUBTITLE', payload: language });
     }
-  };
+  }, []);
 
-  const selectAudioTrack = (trackId: string) => {
+  const selectAudioTrack = useCallback((trackId: string) => {
     // In a real implementation, this would switch audio tracks
     // For demo purposes, we'll just update the state
-    setCurrentAudioTrack(trackId);
+    dispatchPlayer({ type: 'SET_CURRENT_AUDIO_TRACK', payload: trackId });
     toast({
       title: 'Audio track changed',
-      description: `Switched to ${availableAudioTracks.find(t => t.id === trackId)?.label || 'Unknown track'}`,
+      description: `Switched to ${playerState.availableAudioTracks.find(t => t.id === trackId)?.label || 'Unknown track'}`,
     });
-  };
+  }, [playerState.availableAudioTracks, toast]);
 
-  const toggleAudioTracks = () => {
-    setAudioTracksEnabled(!audioTracksEnabled);
+  const toggleAudioTracks = useCallback(() => {
+    dispatchPlayer({ type: 'SET_AUDIO_TRACKS_ENABLED', payload: !playerState.audioTracksEnabled });
     toast({
-      title: audioTracksEnabled ? 'Audio tracks disabled' : 'Audio tracks enabled',
+      title: playerState.audioTracksEnabled ? 'Audio tracks disabled' : 'Audio tracks enabled',
       description: 'Multi-track audio has been toggled.',
     });
-  };
+  }, [playerState.audioTracksEnabled, toast]);
 
   return (
     <div
@@ -914,7 +1293,7 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
       className={cn(
         'relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl bg-black group',
         className,
-        isFullscreen && 'fixed inset-0 z-50 rounded-none'
+        playerState.isFullscreen && 'fixed inset-0 z-50 rounded-none'
       )}
       role="region"
       aria-label="Video player"
@@ -938,18 +1317,18 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
         onError={handleSourceError}
         className={cn('w-full h-full', className)}
       >
-        {currentVideoSource ? (
-          currentVideoSource.type === 'url' ? (
+        {playerState.currentVideoSource ? (
+          playerState.currentVideoSource.type === 'url' ? (
             <video
               ref={videoRef}
-              src={currentVideoSource.url}
+              src={playerState.currentVideoSource.url}
               className="w-full h-full object-contain"
               crossOrigin="anonymous"
             />
           ) : (
             <LazyIframe
-              srcDoc={currentVideoSource.iframeCode || ''}
-              title={currentVideoSource.title || video.title}
+              srcDoc={playerState.currentVideoSource.iframeCode || ''}
+              title={playerState.currentVideoSource.title || video.title}
               className="w-full h-full"
             />
           )
@@ -966,8 +1345,8 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
       {/* Smart Skip Detector */}
       <SmartSkipDetector
         videoRef={videoRef}
-        currentTime={progress}
-        duration={duration}
+        currentTime={playerState.progress}
+        duration={playerState.duration}
         onSkip={(time) => {
           if (videoRef.current) {
             videoRef.current.currentTime = time;
@@ -976,16 +1355,21 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
         className="absolute inset-0"
       />
 
+      {/* Network Status Indicator */}
+      <div className="absolute top-4 right-4 z-10">
+        <NetworkStatusIndicator compact />
+      </div>
+
       {/* Cross-Device Sync */}
       <div className="absolute top-20 right-4 z-10">
         <CrossDeviceSync
           videoId={video.id}
-          currentTime={progress}
-          isPlaying={isPlaying}
+          currentTime={playerState.progress}
+          isPlaying={playerState.isPlaying}
           onSyncFromDevice={(time, playing) => {
             if (videoRef.current) {
               videoRef.current.currentTime = time;
-              if (playing !== isPlaying) {
+              if (playing !== playerState.isPlaying) {
                 if (playing) {
                   videoRef.current.play().catch(console.error);
                 } else {
@@ -999,66 +1383,66 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
 
       {/* Enhanced Gesture indicators */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-5xl">
-          {seekIndicator === 'backward' && <Rewind className="animate-ping" />}
-          {seekIndicator === 'forward' && <FastForward className="animate-ping" />}
-          {doubleTapIndicator && (
+          {playerState.seekIndicator === 'backward' && <Rewind className="animate-ping" />}
+          {playerState.seekIndicator === 'forward' && <FastForward className="animate-ping" />}
+          {gestureState.doubleTapIndicator && (
             <div className="absolute" style={{
-              left: doubleTapIndicator.position.x - 50,
-              top: doubleTapIndicator.position.y - 50,
+              left: gestureState.doubleTapIndicator.position.x - 50,
+              top: gestureState.doubleTapIndicator.position.y - 50,
               animation: 'fadeOut 1s ease-out forwards'
             }}>
-              {doubleTapIndicator.type === 'backward' && <Rewind className="text-6xl animate-bounce" />}
-              {doubleTapIndicator.type === 'forward' && <FastForward className="text-6xl animate-bounce" />}
-              {doubleTapIndicator.type === 'play' && <Play className="text-6xl animate-bounce" />}
+              {gestureState.doubleTapIndicator.type === 'backward' && <Rewind className="text-6xl animate-bounce" />}
+              {gestureState.doubleTapIndicator.type === 'forward' && <FastForward className="text-6xl animate-bounce" />}
+              {gestureState.doubleTapIndicator.type === 'play' && <Play className="text-6xl animate-bounce" />}
             </div>
           )}
-          {gestureIndicator && (
+          {gestureState.gestureIndicator && (
             <div className="absolute bg-black/70 p-3 rounded-lg" style={{
-              left: gestureIndicator.position.x - 60,
-              top: gestureIndicator.position.y - 40,
+              left: gestureState.gestureIndicator.position.x - 60,
+              top: gestureState.gestureIndicator.position.y - 40,
               animation: 'fadeOut 1s ease-out forwards'
             }}>
-              {gestureIndicator.type === 'volume' && (
+              {gestureState.gestureIndicator.type === 'volume' && (
                 <div className="flex flex-col items-center">
-                  {gestureIndicator.value > 50 && <Volume2 />}
-                  {gestureIndicator.value <= 50 && gestureIndicator.value > 0 && <Volume1 />}
-                  {gestureIndicator.value === 0 && <VolumeX />}
-                  <span className="text-lg mt-1">{Math.round(gestureIndicator.value)}%</span>
+                  {gestureState.gestureIndicator.value > 50 && <Volume2 />}
+                  {gestureState.gestureIndicator.value <= 50 && gestureState.gestureIndicator.value > 0 && <Volume1 />}
+                  {gestureState.gestureIndicator.value === 0 && <VolumeX />}
+                  <span className="text-lg mt-1">{Math.round(gestureState.gestureIndicator.value)}%</span>
                 </div>
               )}
-              {gestureIndicator.type === 'brightness' && (
+              {gestureState.gestureIndicator.type === 'brightness' && (
                 <div className="flex flex-col items-center">
                   <span className="text-2xl">☀️</span>
-                  <span className="text-lg mt-1">{Math.round(gestureIndicator.value)}%</span>
+                  <span className="text-lg mt-1">{Math.round(gestureState.gestureIndicator.value)}%</span>
                 </div>
               )}
-              {gestureIndicator.type === 'seek' && (
+              {gestureState.gestureIndicator.type === 'seek' && (
                 <div className="flex flex-col items-center">
-                  {gestureIndicator.value > 0 ? <FastForward /> : <Rewind />}
-                  <span className="text-lg mt-1">{Math.abs(gestureIndicator.value)}s</span>
+                  {gestureState.gestureIndicator.value > 0 ? <FastForward /> : <Rewind />}
+                  <span className="text-lg mt-1">{Math.abs(gestureState.gestureIndicator.value)}s</span>
                 </div>
               )}
-              {gestureIndicator.type === 'speed' && (
+              {gestureState.gestureIndicator.type === 'speed' && (
                 <div className="flex flex-col items-center">
                   <span className="text-2xl">⚡</span>
-                  <span className="text-lg mt-1">{gestureIndicator.value}%</span>
+                  <span className="text-lg mt-1">{gestureState.gestureIndicator.value}%</span>
                 </div>
               )}
             </div>
           )}
-          {shakeGesture && (
+          {gestureState.shakeGesture && (
             <div className="bg-black/70 p-4 rounded-lg animate-bounce">
               <span className="text-2xl">🎲</span>
               <div className="text-sm mt-1">Random Video</div>
             </div>
           )}
-          {pinchGesture && (
+          {gestureState.pinchGesture && (
             <div className="bg-black/70 p-3 rounded-lg">
               <span className="text-2xl">🔍</span>
-              <div className="text-sm mt-1">Zoom: {pinchGesture.scale.toFixed(1)}x</div>
+              <div className="text-sm mt-1">Zoom: {gestureState.pinchGesture.scale.toFixed(1)}x</div>
             </div>
           )}
-          {threeFingerGesture && (
+          {gestureState.threeFingerGesture && (
             <div className="bg-black/70 p-3 rounded-lg animate-pulse">
               <span className="text-2xl">📸</span>
               <div className="text-sm mt-1">Screenshot</div>
@@ -1069,12 +1453,12 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
       <div
         className={cn(
           'absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-300',
-          showControls || !isPlaying ? 'opacity-100' : 'opacity-0'
+          memoizedControlsVisibility ? 'opacity-100' : 'opacity-0'
         )}
       >
         <Slider
-          value={[progress]}
-          max={duration}
+          value={[playerState.progress]}
+          max={playerState.duration}
           onValueChange={handleProgressChange}
           className="w-full h-1.5 absolute top-0 left-0 right-0 opacity-100 cursor-pointer group-hover:h-2 transition-all"
         />
@@ -1085,10 +1469,10 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
             size="icon"
             className="hover:bg-white/20"
             onClick={(e) => {e.stopPropagation(); togglePlay();}}
-            aria-label={isPlaying ? 'Pause video' : 'Play video'}
-            aria-pressed={isPlaying}
+            aria-label={playerState.isPlaying ? 'Pause video' : 'Play video'}
+            aria-pressed={playerState.isPlaying}
           >
-            {isPlaying ? (
+            {playerState.isPlaying ? (
               <Pause className="h-5 w-5" />
             ) : (
               <Play className="h-5 w-5" />
@@ -1096,14 +1480,14 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
           </Button>
           <div className="flex items-center gap-2 group/volume">
             <Button variant="ghost" size="icon" className="hover:bg-white/20" onClick={(e) => {e.stopPropagation(); toggleMute();}}>
-              {isMuted || volume === 0 ? (
+              {playerState.isMuted || playerState.volume === 0 ? (
                 <VolumeX className="h-5 w-5" />
               ) : (
                 <Volume2 className="h-5 w-5" />
               )}
             </Button>
             <Slider
-              value={[isMuted ? 0 : volume]}
+              value={[memoizedVolumeDisplay]}
               max={1}
               step={0.1}
               onValueChange={handleVolumeChange}
@@ -1111,7 +1495,7 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
             />
           </div>
           <div className="text-xs">
-            {formatTime(progress)} / {formatTime(duration)}
+            {memoizedTimeDisplay}
           </div>
           <div className="flex-grow" />
 
@@ -1128,7 +1512,7 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
                   <DropdownMenuSubContent sideOffset={5} alignOffset={-5} className="bg-black/80 text-white border-white/20">
                     {speeds.map((speed) => (
                       <DropdownMenuItem key={speed} onClick={() => handlePlaybackRateChange(speed)}>
-                        <Check className={cn('mr-2 h-4 w-4', playbackRate === speed ? 'opacity-100' : 'opacity-0')} /> {speed}x
+                        <Check className={cn('mr-2 h-4 w-4', playerState.playbackRate === speed ? 'opacity-100' : 'opacity-0')} /> {speed}x
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuSubContent>
@@ -1138,62 +1522,62 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
                    <DropdownMenuSubContent sideOffset={5} alignOffset={-5} className="bg-black/80 text-white border-white/20">
                      {qualities.map((q) => (
                          <DropdownMenuItem key={q} onClick={() => handleQualityChange(q)}>
-                              <Check className={cn('mr-2 h-4 w-4', quality === q ? 'opacity-100' : 'opacity-0')} /> {q}
+                              <Check className={cn('mr-2 h-4 w-4', playerState.quality === q ? 'opacity-100' : 'opacity-0')} /> {q}
                            </DropdownMenuItem>
                      ))}
                    </DropdownMenuSubContent>
                  </DropdownMenuSub>
-                 {availableSubtitles.length > 0 && (
+                 {playerState.availableSubtitles.length > 0 && (
                    <DropdownMenuSub>
                      <DropdownMenuSubTrigger>Subtitles</DropdownMenuSubTrigger>
                      <DropdownMenuSubContent sideOffset={5} alignOffset={-5} className="bg-black/80 text-white border-white/20">
                        <DropdownMenuItem onClick={toggleSubtitles}>
-                         <Check className={cn('mr-2 h-4 w-4', subtitlesEnabled ? 'opacity-100' : 'opacity-0')} />
-                         {subtitlesEnabled ? 'Disable' : 'Enable'} Subtitles
+                         <Check className={cn('mr-2 h-4 w-4', playerState.subtitlesEnabled ? 'opacity-100' : 'opacity-0')} />
+                         {playerState.subtitlesEnabled ? 'Disable' : 'Enable'} Subtitles
                        </DropdownMenuItem>
-                       {availableSubtitles.map((subtitle) => (
+                       {playerState.availableSubtitles.map((subtitle) => (
                          <DropdownMenuItem key={subtitle} onClick={() => selectSubtitle(subtitle)}>
-                           <Check className={cn('mr-2 h-4 w-4', currentSubtitle === subtitle ? 'opacity-100' : 'opacity-0')} />
+                           <Check className={cn('mr-2 h-4 w-4', playerState.currentSubtitle === subtitle ? 'opacity-100' : 'opacity-0')} />
                            {subtitle}
                          </DropdownMenuItem>
                        ))}
                      </DropdownMenuSubContent>
                    </DropdownMenuSub>
                  )}
-                 {availableAudioTracks.length > 1 && (
+                 {playerState.availableAudioTracks.length > 1 && (
                    <DropdownMenuSub>
                      <DropdownMenuSubTrigger>Audio Tracks</DropdownMenuSubTrigger>
                      <DropdownMenuSubContent sideOffset={5} alignOffset={-5} className="bg-black/80 text-white border-white/20">
                        <DropdownMenuItem onClick={toggleAudioTracks}>
-                         <Check className={cn('mr-2 h-4 w-4', audioTracksEnabled ? 'opacity-100' : 'opacity-0')} />
-                         {audioTracksEnabled ? 'Disable' : 'Enable'} Multi-Track Audio
+                         <Check className={cn('mr-2 h-4 w-4', playerState.audioTracksEnabled ? 'opacity-100' : 'opacity-0')} />
+                         {playerState.audioTracksEnabled ? 'Disable' : 'Enable'} Multi-Track Audio
                        </DropdownMenuItem>
-                       {availableAudioTracks.map((track) => (
+                       {playerState.availableAudioTracks.map((track) => (
                          <DropdownMenuItem key={track.id} onClick={() => selectAudioTrack(track.id)}>
-                           <Check className={cn('mr-2 h-4 w-4', currentAudioTrack === track.id ? 'opacity-100' : 'opacity-0')} />
+                           <Check className={cn('mr-2 h-4 w-4', playerState.currentAudioTrack === track.id ? 'opacity-100' : 'opacity-0')} />
                            {track.label} ({track.language})
                          </DropdownMenuItem>
                        ))}
                      </DropdownMenuSubContent>
                    </DropdownMenuSub>
                  )}
-                 <DropdownMenuItem onClick={() => setIsLooping(!isLooping)}>
-                     <Check className={cn('mr-2 h-4 w-4', isLooping ? 'opacity-100' : 'opacity-0')} /> Loop
-                 </DropdownMenuItem>
+                 <DropdownMenuItem onClick={() => dispatchPlayer({ type: 'SET_LOOPING', payload: !playerState.isLooping })}>
+                            <Check className={cn('mr-2 h-4 w-4', playerState.isLooping ? 'opacity-100' : 'opacity-0')} /> Loop
+                        </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenuPortal>
           </DropdownMenu>
 
-          {availableSubtitles.length > 0 && (
+          {playerState.availableSubtitles.length > 0 && (
             <Button variant="ghost" size="icon" className="hover:bg-white/20" onClick={(e) => {e.stopPropagation(); toggleSubtitles();}}>
               <Subtitles className="h-5 w-5" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="hover:bg-white/20" onClick={(e) => {e.stopPropagation(); togglePiP();}} disabled={!pipSupported}>
+          <Button variant="ghost" size="icon" className="hover:bg-white/20" onClick={(e) => {e.stopPropagation(); togglePiP();}} disabled={!isPiPAvailable}>
             <PictureInPicture2 className="h-5 w-5" />
           </Button>
           <Button variant="ghost" size="icon" className="hover:bg-white/20" onClick={(e) => {e.stopPropagation(); toggleFullscreen();}}>
-            {isFullscreen ? (
+            {playerState.isFullscreen ? (
               <Minimize className="h-5 w-5" />
             ) : (
               <Maximize className="h-5 w-5" />
@@ -1203,6 +1587,8 @@ export function VideoPlayer({ video, className, enableAnalytics = true }: VideoP
       </div>
     </div>
   );
-}
+});
 
-    
+VideoPlayer.displayName = 'VideoPlayer';
+
+export { VideoPlayer };

@@ -46,3 +46,8 @@ firestore-debug.log
 service-account.json
 *.csv
 *.zip
+
+# Environment variables (contains sensitive data)
+.env.local
+.env.production
+.env.staging

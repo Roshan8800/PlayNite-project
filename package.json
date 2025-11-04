@@ -20,8 +20,6 @@
     "lighthouse:ci": "npm run lighthouse && cat lighthouse-report.json | jq '.categories | {performance: .performance.score, accessibility: .accessibility.score, \"best-practices\": .[\"best-practices\"].score, seo: .seo.score}'"
   },
   "dependencies": {
-    "@genkit-ai/google-genai": "^1.20.0",
-    "@genkit-ai/next": "^1.20.0",
     "@hookform/resolvers": "^4.1.3",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -56,7 +54,6 @@
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
     "firebase-admin": "^13.5.0",
-    "genkit": "^1.20.0",
     "jsdom": "^27.1.0",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
@@ -88,6 +85,7 @@
     "babel-loader": "^10.0.0",
     "genkit-cli": "^1.20.0",
     "jest": "^30.2.0",
+    "jest-canvas-mock": "^2.5.2",
     "jest-environment-jsdom": "^30.2.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",

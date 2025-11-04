@@ -110,9 +110,21 @@ export default function WelcomePage() {
         </div>
       </section>
 
-       <footer className="text-center p-4 text-sm text-muted-foreground">
-        © {new Date().getFullYear()} PlayNite. All rights reserved.
-      </footer>
+       <footer className="text-center p-4 text-sm text-muted-foreground border-t">
+         <div className="max-w-4xl mx-auto">
+           <p className="mb-2">© {new Date().getFullYear()} PlayNite. All rights reserved.</p>
+           <div className="flex flex-wrap justify-center gap-4 text-xs">
+             <a href="/help" className="hover:text-primary">Help</a>
+             <a href="/contact-support" className="hover:text-primary">Contact</a>
+             <a href="/report-content" className="hover:text-primary">Report Content</a>
+             <a href="/terms-of-service" className="hover:text-primary">Terms</a>
+             <a href="/privacy-policy" className="hover:text-primary">Privacy</a>
+             <a href="/dmca-policy" className="hover:text-primary">DMCA</a>
+             <a href="/disclaimer" className="hover:text-primary">Disclaimer</a>
+             <a href="/cookie-policy" className="hover:text-primary">Cookies</a>
+           </div>
+         </div>
+       </footer>
     </div>
   );
 }

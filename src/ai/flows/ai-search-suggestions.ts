@@ -11,8 +11,7 @@
  * @function smartSearchSuggestions - The main function to generate smart search suggestions.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const AISearchSuggestionsInputSchema = z.object({
   query: z.string().describe('The current search query.'),
@@ -25,31 +24,16 @@ const AISearchSuggestionsOutputSchema = z.object({
 export type AISearchSuggestionsOutput = z.infer<typeof AISearchSuggestionsOutputSchema>;
 
 export async function smartSearchSuggestions(input: AISearchSuggestionsInput): Promise<AISearchSuggestionsOutput> {
-  return smartSearchSuggestionsFlow(input);
+  // TODO: Re-implement AI search suggestions without genkit
+  // For now, return basic suggestions based on query keywords
+  const query = input.query.toLowerCase();
+  const suggestions = [
+    `${query} videos`,
+    `${query} clips`,
+    `${query} tutorial`,
+    `best ${query}`,
+    `${query} guide`
+  ].filter(s => s.length > 3);
+
+  return { suggestions };
 }
-
-const smartSearchSuggestionsPrompt = ai.definePrompt({
-  name: 'smartSearchSuggestionsPrompt',
-  input: {schema: AISearchSuggestionsInputSchema},
-  output: {schema: AISearchSuggestionsOutputSchema},
-  prompt: `You are an AI assistant that provides smart search suggestions for a video streaming app.
-  Given the current search query, generate an array of suggested search terms that are relevant and helpful to the user.
-  The suggestions should help the user find the content they are looking for.
-
-  Current search query: {{{query}}}
-
-  Format your response as a JSON object with a "suggestions" array.
-  Example: {{"suggestions": ["suggestion1", "suggestion2", "suggestion3"]}}`,
-});
-
-const smartSearchSuggestionsFlow = ai.defineFlow(
-  {
-    name: 'smartSearchSuggestionsFlow',
-    inputSchema: AISearchSuggestionsInputSchema,
-    outputSchema: AISearchSuggestionsOutputSchema,
-  },
-  async input => {
-    const {output} = await smartSearchSuggestionsPrompt(input);
-    return output!;
-  }
-);

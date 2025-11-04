@@ -21,10 +21,6 @@ describe('VideoLoader', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock URL constructor
-    global.URL = jest.fn().mockImplementation(() => ({
-      toString: () => 'https://example.com/video.mp4'
-    }));
   });
 
   it('renders loading state initially', () => {
@@ -38,7 +34,7 @@ describe('VideoLoader', () => {
       </VideoLoader>
     );
 
-    expect(screen.getByText('Loading video...')).toBeInTheDocument();
+    expect(screen.getByText('Loading video...')).toBeInTheDocument(); // @ts-ignore - jest-dom matcher
   });
 
   it('validates URL sources correctly', async () => {
@@ -51,11 +47,33 @@ describe('VideoLoader', () => {
       crossOrigin: 'anonymous',
       addEventListener: jest.fn((event, callback) => {
         if (event === 'loadedmetadata') {
-          setTimeout(callback, 100);
+          setTimeout(() => (callback as EventListener)(new Event('loadedmetadata')), 100);
         }
       }),
       removeEventListener: jest.fn(),
-      load: jest.fn()
+      load: jest.fn(),
+      src: '',
+      currentTime: 0,
+      duration: 0,
+      volume: 1,
+      muted: false,
+      paused: true,
+      play: jest.fn().mockResolvedValue(undefined),
+      pause: jest.fn(),
+      tagName: 'VIDEO',
+      nodeType: 1,
+      ownerDocument: document,
+      parentNode: null,
+      childNodes: [],
+      appendChild: jest.fn(),
+      removeChild: jest.fn(),
+      insertBefore: jest.fn(),
+      cloneNode: jest.fn(),
+      setAttribute: jest.fn(),
+      getAttribute: jest.fn(),
+      hasAttribute: jest.fn(),
+      removeAttribute: jest.fn(),
+      dispatchEvent: jest.fn(),
     };
 
     // Mock document.createElement
@@ -80,6 +98,9 @@ describe('VideoLoader', () => {
     await waitFor(() => {
       expect(onSourceReady).toHaveBeenCalledWith(mockSources[0]);
     });
+
+    // Restore original createElement
+    document.createElement = originalCreateElement;
   });
 
   it('handles invalid URL sources', async () => {
@@ -87,9 +108,10 @@ describe('VideoLoader', () => {
     const onError = jest.fn();
 
     // Mock invalid URL
+    const originalURL = global.URL;
     global.URL = jest.fn().mockImplementation(() => {
       throw new Error('Invalid URL');
-    });
+    }) as any;
 
     render(
       <VideoLoader
@@ -176,27 +198,37 @@ describe('VideoLoader', () => {
 
     // Mock URL to fail for first source
     let urlCallCount = 0;
+    const originalURL = global.URL;
     global.URL = jest.fn().mockImplementation(() => {
       urlCallCount++;
       if (urlCallCount === 1) {
         throw new Error('Invalid URL');
       }
       return { toString: () => 'https://example.com/video.mp4' };
+    }) as any;
+
+    // Create a real video element for second source
+    const mockVideo = document.createElement('video');
+    mockVideo.preload = 'metadata';
+    mockVideo.crossOrigin = 'anonymous';
+
+    // Mock the event listener to simulate successful load
+    const originalAddEventListener = mockVideo.addEventListener.bind(mockVideo);
+    mockVideo.addEventListener = jest.fn((event, callback) => {
+      originalAddEventListener(event, callback);
+      if (event === 'loadedmetadata') {
+        setTimeout(() => {
+          const loadEvent = new Event('loadedmetadata');
+          (callback as EventListener)(loadEvent);
+        }, 100);
+      }
     });
 
-    // Mock successful video load for second source
-    const mockVideo = {
-      preload: 'metadata',
-      crossOrigin: 'anonymous',
-      addEventListener: jest.fn((event, callback) => {
-        if (event === 'loadedmetadata') {
-          setTimeout(callback, 100);
-        }
-      }),
-      removeEventListener: jest.fn(),
-      load: jest.fn()
-    };
+    mockVideo.load = jest.fn();
+    mockVideo.play = jest.fn().mockResolvedValue(undefined);
+    mockVideo.pause = jest.fn();
 
+    const originalCreateElement = document.createElement;
     document.createElement = jest.fn().mockReturnValue(mockVideo);
 
     render(
@@ -213,6 +245,10 @@ describe('VideoLoader', () => {
       expect(onError).toHaveBeenCalledTimes(1); // First source fails
       expect(onSourceReady).toHaveBeenCalledWith(mockSources[0]); // Second source succeeds
     });
+
+    // Restore originals
+    global.URL = originalURL;
+    document.createElement = originalCreateElement;
   });
 
   it('shows error state when all sources fail', async () => {
@@ -225,9 +261,10 @@ describe('VideoLoader', () => {
     ];
 
     // Mock URL to always fail
+    const originalURL = global.URL;
     global.URL = jest.fn().mockImplementation(() => {
       throw new Error('Invalid URL');
-    });
+    }) as any;
 
     render(
       <VideoLoader
@@ -245,26 +282,38 @@ describe('VideoLoader', () => {
     });
 
     // Should show error UI
-    expect(screen.getByText('Video Load Error')).toBeInTheDocument();
+    expect(screen.getByText('Video Load Error')).toBeInTheDocument(); // @ts-ignore - jest-dom matcher
+
+    // Restore original URL
+    global.URL = originalURL;
   });
 
   it('renders children when source is ready', async () => {
     const onSourceReady = jest.fn();
     const onError = jest.fn();
 
-    // Mock successful video load
-    const mockVideo = {
-      preload: 'metadata',
-      crossOrigin: 'anonymous',
-      addEventListener: jest.fn((event, callback) => {
-        if (event === 'loadedmetadata') {
-          setTimeout(callback, 100);
-        }
-      }),
-      removeEventListener: jest.fn(),
-      load: jest.fn()
-    };
+    // Create a real video element and mock its methods
+    const mockVideo = document.createElement('video');
+    mockVideo.preload = 'metadata';
+    mockVideo.crossOrigin = 'anonymous';
 
+    // Mock the event listener to simulate successful load
+    const originalAddEventListener = mockVideo.addEventListener.bind(mockVideo);
+    mockVideo.addEventListener = jest.fn((event, callback) => {
+      originalAddEventListener(event, callback);
+      if (event === 'loadedmetadata') {
+        setTimeout(() => {
+          const loadEvent = new Event('loadedmetadata');
+          (callback as EventListener)(loadEvent);
+        }, 100);
+      }
+    });
+
+    mockVideo.load = jest.fn();
+    mockVideo.play = jest.fn().mockResolvedValue(undefined);
+    mockVideo.pause = jest.fn();
+
+    const originalCreateElement = document.createElement;
     document.createElement = jest.fn().mockReturnValue(mockVideo);
 
     render(
@@ -278,23 +327,29 @@ describe('VideoLoader', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('video-content')).toBeInTheDocument();
+      expect(screen.getByTestId('video-content')).toBeInTheDocument(); // @ts-ignore
     });
+
+    // Restore original createElement
+    document.createElement = originalCreateElement;
   });
 
   it('respects timeout configuration', async () => {
     const onSourceReady = jest.fn();
     const onError = jest.fn();
 
-    // Mock video that never loads
-    const mockVideo = {
-      preload: 'metadata',
-      crossOrigin: 'anonymous',
-      addEventListener: jest.fn(), // Never calls callback
-      removeEventListener: jest.fn(),
-      load: jest.fn()
-    };
+    // Create a real video element that never loads
+    const mockVideo = document.createElement('video');
+    mockVideo.preload = 'metadata';
+    mockVideo.crossOrigin = 'anonymous';
 
+    // Mock addEventListener to never call callbacks (simulating timeout)
+    mockVideo.addEventListener = jest.fn();
+    mockVideo.load = jest.fn();
+    mockVideo.play = jest.fn().mockResolvedValue(undefined);
+    mockVideo.pause = jest.fn();
+
+    const originalCreateElement = document.createElement;
     document.createElement = jest.fn().mockReturnValue(mockVideo);
 
     render(
@@ -316,5 +371,8 @@ describe('VideoLoader', () => {
         })
       );
     }, { timeout: 200 });
+
+    // Restore original createElement
+    document.createElement = originalCreateElement;
   });
 });

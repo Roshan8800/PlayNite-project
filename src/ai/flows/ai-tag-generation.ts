@@ -8,8 +8,7 @@
  * - GenerateTagsOutput - The return type for the generateTags function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GenerateTagsInputSchema = z.object({
   videoTitle: z.string().describe('The title of the video.'),
@@ -25,30 +24,16 @@ const GenerateTagsOutputSchema = z.object({
 export type GenerateTagsOutput = z.infer<typeof GenerateTagsOutputSchema>;
 
 export async function generateTags(input: GenerateTagsInput): Promise<GenerateTagsOutput> {
-  return generateTagsFlow(input);
+  // TODO: Re-implement AI tag generation without genkit
+  // For now, return basic tags based on title keywords
+  const titleWords = input.videoTitle.toLowerCase().split(/\s+/);
+  const descriptionWords = input.videoDescription.toLowerCase().split(/\s+/);
+
+  const allWords = [...titleWords, ...descriptionWords];
+  const tags = allWords
+    .filter(word => word.length > 3)
+    .slice(0, 10)
+    .map(word => word.replace(/[^\w]/g, ''));
+
+  return { tags };
 }
-
-const prompt = ai.definePrompt({
-  name: 'generateTagsPrompt',
-  input: {schema: GenerateTagsInputSchema},
-  output: {schema: GenerateTagsOutputSchema},
-  prompt: `You are an expert in video tagging.
-  Given the title and description of a video, generate a list of relevant tags that can be used to improve searchability.
-  The tags should be comma separated.
-
-  Title: {{{videoTitle}}}
-  Description: {{{videoDescription}}}
-  `,
-});
-
-const generateTagsFlow = ai.defineFlow(
-  {
-    name: 'generateTagsFlow',
-    inputSchema: GenerateTagsInputSchema,
-    outputSchema: GenerateTagsOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);

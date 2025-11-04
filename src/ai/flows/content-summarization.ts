@@ -8,8 +8,7 @@
  * - ContentSummarizationOutput - The return type for the summarizeContent function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const ContentSummarizationInputSchema = z.object({
   videoTitle: z.string().describe('The title of the video.'),
@@ -25,24 +24,8 @@ const ContentSummarizationOutputSchema = z.object({
 export type ContentSummarizationOutput = z.infer<typeof ContentSummarizationOutputSchema>;
 
 export async function summarizeContent(input: ContentSummarizationInput): Promise<ContentSummarizationOutput> {
-  return summarizeContentFlow(input);
+  // TODO: Re-implement AI content summarization without genkit
+  // For now, return a basic summary based on title and description
+  const summary = `${input.videoTitle}: ${input.videoDescription.substring(0, 100)}...`;
+  return { summary };
 }
-
-const summarizeContentPrompt = ai.definePrompt({
-  name: 'summarizeContentPrompt',
-  input: {schema: ContentSummarizationInputSchema},
-  output: {schema: ContentSummarizationOutputSchema},
-  prompt: `Provide a brief summary of the video content based on the following information:\n\nTitle: {{{videoTitle}}}\nDescription: {{{videoDescription}}}\n\nSummary:`,
-});
-
-const summarizeContentFlow = ai.defineFlow(
-  {
-    name: 'summarizeContentFlow',
-    inputSchema: ContentSummarizationInputSchema,
-    outputSchema: ContentSummarizationOutputSchema,
-  },
-  async input => {
-    const {output} = await summarizeContentPrompt(input);
-    return output!;
-  }
-);

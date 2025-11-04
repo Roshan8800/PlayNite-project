@@ -19,4 +19,18 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(lucide-react|@radix-ui)/)',
   ],
+  globals: {
+    'ts-jest': {
+      tsconfig: {
+        jsx: 'react-jsx',
+      },
+    },
+  },
+  testEnvironmentOptions: {
+    html: '<html lang="zh-cmn-Hant"></html>',
+    url: 'https://jestjs.io/',
+    userAgent: 'Agent/007',
+    resources: 'usable',
+  },
+  setupFiles: ['<rootDir>/jest.polyfills.js'],
 };

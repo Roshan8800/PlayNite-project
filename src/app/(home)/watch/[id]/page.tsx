@@ -56,7 +56,7 @@ const useVideoAnalytics = (videoId: string, firestore: any) => {
       await updateDoc(doc(firestore, 'videos', videoId, 'analytics', 'summary'), {
         ...data,
         lastUpdated: serverTimestamp()
-      }, { merge: true });
+      } as any, { merge: true });
       setAnalytics(prev => ({ ...prev, ...data }));
     } catch (error) {
       console.error('Failed to update video analytics:', error);
@@ -76,7 +76,7 @@ import {
   Flag,
 } from 'lucide-react';
 import { useDoc, useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, query, where, limit, setDoc, serverTimestamp, updateDoc, getDocs, getDoc, addDoc } from 'firebase/firestore';
+import { collection, doc, query, where, limit, setDoc, serverTimestamp, updateDoc, getDocs, getDoc, addDoc, FieldPath } from 'firebase/firestore';
 import Link from 'next/link';
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { type Video } from '@/lib/types';

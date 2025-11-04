@@ -1,4 +1,4 @@
-import { collection, getDocs, query, orderBy, limit, startAfter, doc, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, startAfter, doc, where, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config.js'; // Import db from the JS config
 
 export async function fetchVideos(limitCount = 20, lastDocId = null) {
@@ -88,6 +88,14 @@ export async function fetchVideosPaginated(page = 1, pageSize = 20, filters = {}
       constraints.push(where('views', '<=', filters.maxViews));
     }
 
+    if (filters.minDuration !== undefined) {
+      constraints.push(where('duration', '>=', filters.minDuration));
+    }
+
+    if (filters.maxDuration !== undefined) {
+      constraints.push(where('duration', '<=', filters.maxDuration));
+    }
+
     // Build base query
     let baseQuery = query(collection(db, 'videos'), ...constraints);
 
@@ -103,51 +111,36 @@ export async function fetchVideosPaginated(page = 1, pageSize = 20, filters = {}
       baseQuery = query(baseQuery, orderBy('uploadedAt', sortOrder), orderBy('__name__'));
     }
 
-    // Get total count for pagination info
-    const totalSnapshot = await getDocs(query(baseQuery));
-    const totalItems = totalSnapshot.size;
-
-    // Apply pagination
-    let paginatedQuery = query(baseQuery, limit(pageSize));
-
-    // For offset-based pagination, we need to skip documents
-    // This is inefficient for large offsets, but Firestore doesn't support OFFSET directly
-    if (offset > 0) {
-      // Get all documents up to the offset, then start after the last one
-      const offsetQuery = query(baseQuery, limit(offset));
-      const offsetSnapshot = await getDocs(offsetQuery);
-
-      if (offsetSnapshot.docs.length === offset) {
-        const lastOffsetDoc = offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
-        paginatedQuery = query(baseQuery, startAfter(lastOffsetDoc), limit(pageSize));
-      } else {
-        // Not enough documents, return empty result
-        return {
-          videos: [],
-          pagination: {
-            currentPage: page,
-            pageSize,
-            totalItems,
-            totalPages: Math.ceil(totalItems / pageSize),
-            hasNextPage: false,
-            hasPreviousPage: page > 1,
-          }
-        };
-      }
-    }
-
-    const videosSnapshot = await getDocs(paginatedQuery);
-    const videosList = videosSnapshot.docs.map(doc => ({
+    // Get all documents matching filters (for server-side filtering and accurate total)
+    const totalSnapshot = await getDocs(baseQuery);
+    let videosList = totalSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+
+    // Apply server-side text search filtering
+    if (filters.query) {
+      const queryLower = filters.query.toLowerCase();
+      videosList = videosList.filter(video =>
+        video.title?.toLowerCase().includes(queryLower) ||
+        video.description?.toLowerCase().includes(queryLower) ||
+        video.tags?.some(tag => tag.toLowerCase().includes(queryLower))
+      );
+    }
+
+    const totalItems = videosList.length;
+
+    // Apply pagination to the filtered list
+    const startIndex = offset;
+    const endIndex = startIndex + pageSize;
+    const paginatedVideos = videosList.slice(startIndex, endIndex);
 
     const totalPages = Math.ceil(totalItems / pageSize);
     const hasNextPage = page < totalPages;
     const hasPreviousPage = page > 1;
 
     return {
-      videos: videosList,
+      videos: paginatedVideos,
       pagination: {
         currentPage: page,
         pageSize,
