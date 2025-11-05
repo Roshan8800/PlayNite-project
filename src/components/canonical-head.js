@@ -4,7 +4,7 @@ import Head from 'next/head';
 
 export const CanonicalHead = ({ canonicalUrl }) => {
   const router = useRouter();
-  const canonical = canonicalUrl || `https://yourdomain.com${router.asPath}`;
+  const canonical = canonicalUrl || `https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app${router.asPath}`;
 
   return (
     <Head>

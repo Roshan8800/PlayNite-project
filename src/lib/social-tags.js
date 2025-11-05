@@ -1,5 +1,5 @@
 
-export function generateEnhancedSocialTags(video, baseUrl = 'https://yourdomain.com') {
+export function generateEnhancedSocialTags(video, baseUrl = 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app') {
   const title = video.title || 'PlayNite - Modern Video Streaming';
   const description = video.description || 'Watch high-quality videos on PlayNite.';
   const image = video.thumbnailUrl || `${baseUrl}/og-default.jpg`;

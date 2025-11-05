@@ -44,6 +44,7 @@ const menuItems = [
 ];
 
 const policyItems = [
+  { href: '/about', label: 'About Us' },
   { href: '/help', label: 'Help & FAQ' },
   { href: '/contact-support', label: 'Contact Support' },
   { href: '/report-content', label: 'Report Content' },
@@ -139,53 +140,57 @@ export default function AppSidebar() {
   }
 
   return (
-    <Sidebar side="right" collapsible="offcanvas" className="border-l">
+    <Sidebar side="right" collapsible="offcanvas" className="border-l" role="complementary" aria-label="Main navigation">
       <SidebarHeader className="p-4">
-        <Link href="/home" className="flex items-center justify-center">
+        <Link href="/home" className="flex items-center justify-center" aria-label="PlayNite home">
           <Logo />
         </Link>
       </SidebarHeader>
       <SidebarContent className="p-2">
-        <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.label}>
-              <Link href={item.href}>
-                <SidebarMenuButton
-                  isActive={pathname === item.href}
-                  className={cn(
-                    'w-full justify-start',
-                    pathname === item.href && 'bg-accent text-accent-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4 mr-2" />
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        <nav aria-label="Main navigation" role="navigation">
+          <SidebarMenu role="menu">
+            {menuItems.map((item) => (
+              <SidebarMenuItem key={item.label} role="none">
+                <Link href={item.href} role="menuitem">
+                  <SidebarMenuButton
+                    isActive={pathname === item.href}
+                    className={cn(
+                      'w-full justify-start',
+                      pathname === item.href && 'bg-accent text-accent-foreground'
+                    )}
+                    aria-current={pathname === item.href ? 'page' : undefined}
+                  >
+                    <item.icon className="h-4 w-4 mr-2" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </nav>
         <SidebarSeparator />
-        <div className="px-2 py-2">
-          <h3 className="text-sm font-medium text-muted-foreground mb-2">Support & Legal</h3>
-          <div className="space-y-1">
+        <nav aria-label="Support and legal navigation" role="navigation">
+          <h3 className="text-sm font-medium text-muted-foreground mb-2 px-2" id="support-legal-heading">Support & Legal</h3>
+          <div className="space-y-1" role="menu" aria-labelledby="support-legal-heading">
             {policyItems.map((item) => (
-              <Link key={item.href} href={item.href}>
+              <Link key={item.href} href={item.href} role="menuitem">
                 <SidebarMenuButton
                   isActive={pathname === item.href}
                   className={cn(
                     'w-full justify-start text-sm',
                     pathname === item.href && 'bg-accent text-accent-foreground'
                   )}
+                  aria-current={pathname === item.href ? 'page' : undefined}
                 >
                   <span>{item.label}</span>
                 </SidebarMenuButton>
               </Link>
             ))}
           </div>
-        </div>
+        </nav>
       </SidebarContent>
       <SidebarSeparator />
-      <SidebarFooter className="p-2">
+      <SidebarFooter className="p-2" role="contentinfo" aria-label="User account area">
        {renderUserArea()}
       </SidebarFooter>
     </Sidebar>

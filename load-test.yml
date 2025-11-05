@@ -1,0 +1,52 @@
+config:
+  target: 'http://localhost:9002'
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: Warm up phase
+    - duration: 120
+      arrivalRate: 10
+      name: Load testing phase
+    - duration: 60
+      arrivalRate: 20
+      name: Stress testing phase
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+
+scenarios:
+  - name: 'Home page load'
+    weight: 40
+    flow:
+      - get:
+          url: '/'
+
+  - name: 'Search functionality'
+    weight: 20
+    flow:
+      - get:
+          url: '/search'
+      - post:
+          url: '/api/search'
+          json:
+            query: 'test video'
+            page: 1
+
+  - name: 'Video streaming'
+    weight: 25
+    flow:
+      - get:
+          url: '/video/test-id'
+      - get:
+          url: '/watch/test-id'
+
+  - name: 'User authentication'
+    weight: 15
+    flow:
+      - get:
+          url: '/login'
+      - post:
+          url: '/api/auth/login'
+          json:
+            email: 'test@example.com'
+            password: 'testpass'

@@ -61,9 +61,18 @@ function AdminLayoutContent({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
-        <AdminSidebar />
+        <aside
+          role="complementary"
+          aria-label="Admin navigation sidebar"
+        >
+          <AdminSidebar />
+        </aside>
         <div className="flex-1 flex flex-col">
-            <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/40">
+            <main
+              className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/40"
+              role="main"
+              aria-label="Admin main content"
+            >
                 {children}
             </main>
         </div>

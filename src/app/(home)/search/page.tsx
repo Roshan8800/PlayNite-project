@@ -7,6 +7,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { type Video } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VideoGridSkeleton } from '@/components/video-skeleton';
 import { Search as SearchIcon, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -166,7 +167,7 @@ function SearchResults() {
         </h1>
         {queryParam ? (
           <p className="mt-2 text-lg text-muted-foreground">
-            Showing results for &quot;{queryParam}&quot;
+            Showing results for "{queryParam}"
           </p>
         ) : (
           <p className="mt-2 text-lg text-muted-foreground">
@@ -174,50 +175,44 @@ function SearchResults() {
           </p>
         )}
       </header>
-
-      {loading ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
+      <section aria-labelledby="search-results-heading">
+        <h2 id="search-results-heading" className="sr-only">Search Results</h2>
+        {loading ? (
+          <VideoGridSkeleton count={8} />
+        ) : filteredVideos.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {filteredVideos.map((video, index) => (
+                <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+                  <VideoCard video={video} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : filteredVideos.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filteredVideos.map((video, index) => (
-              <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-                <VideoCard video={video} />
+            {totalItems > 0 && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  onPageChange={pagination.setPage}
+                  showPageSizeSelector={true}
+                  pageSize={pagination.pageSize}
+                  pageSizeOptions={pagination.pageSizeOptions}
+                  onPageSizeChange={pagination.setPageSize}
+                />
               </div>
-            ))}
+            )}
+          </>
+        ) : (
+          <div className="flex h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
+            <SearchIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">No Results Found</h3>
+            <p className="mb-4 mt-2 text-sm text-muted-foreground">
+              We couldn't find any videos matching your search. Try another
+              term.
+            </p>
           </div>
-          {totalItems > 0 && (
-            <div className="mt-8">
-              <Pagination
-                currentPage={pagination.currentPage}
-                totalPages={pagination.totalPages}
-                onPageChange={pagination.setPage}
-                showPageSizeSelector={true}
-                pageSize={pagination.pageSize}
-                pageSizeOptions={pagination.pageSizeOptions}
-                onPageSizeChange={pagination.setPageSize}
-              />
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="flex h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
-          <SearchIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No Results Found</h3>
-          <p className="mb-4 mt-2 text-sm text-muted-foreground">
-            We couldn&apos;t find any videos matching your search. Try another
-            term.
-          </p>
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
 }

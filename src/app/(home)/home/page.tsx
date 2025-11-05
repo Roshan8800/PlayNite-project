@@ -15,6 +15,7 @@ import { collection, query, where, limit, orderBy, getDocs, doc, getDoc } from '
 import { useFirestore } from '@/firebase';
 import type { Video, Category } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VideoSkeleton, VideoGridSkeleton } from '@/components/video-skeleton';
 import { useState, useEffect, useCallback, memo } from 'react';
 import { fetchVideos, fetchVideosPaginated } from '@/lib/videos';
 import { contentRecommendationEngine } from '@/ai/flows/content-recommendation-engine';
@@ -28,26 +29,22 @@ const CategoryCard = dynamic(() => import('@/components/category-card').then(mod
   ssr: false,
 });
 const VideoCard = dynamic(() => import('@/components/video-card').then(mod => ({ default: mod.VideoCard })), {
-  loading: () => <Skeleton className="h-40 w-full" />,
+  loading: () => <VideoSkeleton className="h-40 w-full" />,
   ssr: false,
 });
 
 // Memoized video grid component for better performance
 const MemoizedVideoGrid = memo(({ videos, loading }: { videos: Video[], loading: boolean }) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
-    {loading
-      ? Array.from({ length: 8 }).map((_, i) => (
-          <div key={`skeleton-${i}`} className="space-y-2">
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        ))
-      : videos?.map((video: Video, index) => (
-          <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-            <VideoCard video={video} />
-          </div>
-        ))}
+    {loading ? (
+      <VideoGridSkeleton count={8} />
+    ) : (
+      videos?.map((video: Video, index) => (
+        <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+          <VideoCard video={video} />
+        </div>
+      ))
+    )}
   </div>
 ));
 MemoizedVideoGrid.displayName = 'MemoizedVideoGrid';
@@ -203,28 +200,26 @@ export default function HomePage() {
       className="w-full animate-fade-in"
     >
       <CarouselContent>
-        {loading
-          ? Array.from({ length: 5 }).map((_, i) => (
-              <CarouselItem
-                key={i}
-                className="md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
-              >
-                <div className="space-y-2">
-                  <Skeleton className="h-40 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              </CarouselItem>
-            ))
-          : videos?.map((video: Video, index) => (
-              <CarouselItem
-                key={video.id}
-                className="md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
-                style={{ animationDelay: `${index * 100}ms`}}
-              >
-                <VideoCard video={video} />
-              </CarouselItem>
-            ))}
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <CarouselItem
+              key={i}
+              className="md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+            >
+              <VideoSkeleton />
+            </CarouselItem>
+          ))
+        ) : (
+          videos?.map((video: Video, index) => (
+            <CarouselItem
+              key={video.id}
+              className="md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+              style={{ animationDelay: `${index * 100}ms`}}
+            >
+              <VideoCard video={video} />
+            </CarouselItem>
+          ))
+        )}
       </CarouselContent>
       <CarouselPrevious className="ml-12" />
       <CarouselNext className="mr-12" />
@@ -233,34 +228,30 @@ export default function HomePage() {
 
   const renderVideoGrid = (videos: Video[] | undefined, loading: boolean) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
-      {loading
-        ? Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-40 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-            </div>
-          ))
-        : videos?.map((video: Video, index) => (
-            <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms`}}>
-                <VideoCard video={video} />
-            </div>
-          ))}
+      {loading ? (
+        <VideoGridSkeleton count={8} />
+      ) : (
+        videos?.map((video: Video, index) => (
+          <div key={video.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms`}}>
+            <VideoCard video={video} />
+          </div>
+        ))
+      )}
     </div>
   );
 
   return (
     <div className="space-y-8 md:space-y-12 animate-fade-in px-2 md:px-0">
-      <section>
+      <section aria-labelledby="featured-videos-heading">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl md:text-2xl font-bold font-headline">Featured Videos</h2>
+          <h2 id="featured-videos-heading" className="text-xl md:text-2xl font-bold font-headline">Featured Videos</h2>
         </div>
         {renderVideoCarousel(typedFeaturedVideos, videosLoading)}
       </section>
 
-      <section>
+      <section aria-labelledby="categories-heading">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl md:text-2xl font-bold font-headline">
+          <h2 id="categories-heading" className="text-xl md:text-2xl font-bold font-headline">
             Browse Categories
           </h2>
           <Button variant="link" asChild className="hidden sm:inline-flex">
@@ -283,8 +274,8 @@ export default function HomePage() {
         </Button>
       </section>
 
-      <section data-ai-hint="personalized content curation">
-        <h2 className="text-xl md:text-2xl font-bold font-headline mb-4">
+      <section aria-labelledby="recommendations-heading" data-ai-hint="personalized content curation">
+        <h2 id="recommendations-heading" className="text-xl md:text-2xl font-bold font-headline mb-4">
           {user ? 'Recommended For You' : 'Recommended Videos'}
         </h2>
         {aiRecommendationsLoading ? (
@@ -296,19 +287,11 @@ export default function HomePage() {
         {renderVideoCarousel(personalizedRecommendations.length > 0 ? personalizedRecommendations : typedRecommendedVideos, videosLoading || aiRecommendationsLoading)}
       </section>
 
-      <section>
-        <h2 className="text-xl md:text-2xl font-bold font-headline mb-4">All Videos</h2>
+      <section aria-labelledby="all-videos-heading">
+        <h2 id="all-videos-heading" className="text-xl md:text-2xl font-bold font-headline mb-4">All Videos</h2>
         <MemoizedVideoGrid videos={allVideosData} loading={loading} />
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Array.from({ length: pagination.pageSize }).map((_, i) => (
-              <div key={`loading-${i}`} className="space-y-2">
-                <Skeleton className="h-32 md:h-40 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </div>
-            ))}
-          </div>
+          <VideoGridSkeleton count={pagination.pageSize} />
         )}
         {error && (
           <div className="flex justify-center py-4">

@@ -16,19 +16,21 @@ export const metadata: Metadata = {
 export default function WelcomePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="p-4 flex justify-between items-center">
+      <header className="p-4 flex justify-between items-center" role="banner" aria-label="Welcome page header">
         <Logo />
-        <div className="flex gap-2">
-          <Button variant="ghost" asChild>
-            <Link href="/login">Log In</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/signup">Sign Up</Link>
-          </Button>
-        </div>
+        <nav aria-label="Authentication navigation" role="navigation">
+          <div className="flex gap-2">
+            <Button variant="ghost" asChild>
+              <Link href="/login">Log In</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/signup">Sign Up</Link>
+            </Button>
+          </div>
+        </nav>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center text-center p-4 animate-fade-in">
+      <main className="flex-1 flex flex-col items-center justify-center text-center p-4 animate-fade-in" role="main" aria-label="Welcome content">
         <h1 className="text-5xl font-headline font-bold tracking-tight">
           Welcome to PlayNite
         </h1>
@@ -42,9 +44,9 @@ export default function WelcomePage() {
         </div>
       </main>
 
-      <section className="bg-muted/40 py-16 px-4">
+      <section className="bg-muted/40 py-16 px-4" aria-labelledby="experience-heading">
         <div className="container mx-auto max-w-4xl">
-          <h2 className="text-3xl font-headline font-bold text-center mb-8">
+          <h2 id="experience-heading" className="text-3xl font-headline font-bold text-center mb-8">
             Choose Your Experience
           </h2>
           <div className="grid md:grid-cols-2 gap-8 items-start">
@@ -110,19 +112,21 @@ export default function WelcomePage() {
         </div>
       </section>
 
-       <footer className="text-center p-4 text-sm text-muted-foreground border-t">
+       <footer className="text-center p-4 text-sm text-muted-foreground border-t" role="contentinfo" aria-label="Site footer">
          <div className="max-w-4xl mx-auto">
            <p className="mb-2">© {new Date().getFullYear()} PlayNite. All rights reserved.</p>
-           <div className="flex flex-wrap justify-center gap-4 text-xs">
-             <a href="/help" className="hover:text-primary">Help</a>
-             <a href="/contact-support" className="hover:text-primary">Contact</a>
-             <a href="/report-content" className="hover:text-primary">Report Content</a>
-             <a href="/terms-of-service" className="hover:text-primary">Terms</a>
-             <a href="/privacy-policy" className="hover:text-primary">Privacy</a>
-             <a href="/dmca-policy" className="hover:text-primary">DMCA</a>
-             <a href="/disclaimer" className="hover:text-primary">Disclaimer</a>
-             <a href="/cookie-policy" className="hover:text-primary">Cookies</a>
-           </div>
+           <nav aria-label="Footer navigation" role="navigation">
+             <div className="flex flex-wrap justify-center gap-4 text-xs">
+               <a href="/help" className="hover:text-primary">Help</a>
+               <a href="/contact-support" className="hover:text-primary">Contact</a>
+               <a href="/report-content" className="hover:text-primary">Report Content</a>
+               <a href="/terms-of-service" className="hover:text-primary">Terms</a>
+               <a href="/privacy-policy" className="hover:text-primary">Privacy</a>
+               <a href="/dmca-policy" className="hover:text-primary">DMCA</a>
+               <a href="/disclaimer" className="hover:text-primary">Disclaimer</a>
+               <a href="/cookie-policy" className="hover:text-primary">Cookies</a>
+             </div>
+           </nav>
          </div>
        </footer>
     </div>

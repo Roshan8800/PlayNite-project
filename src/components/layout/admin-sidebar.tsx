@@ -40,7 +40,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar side="left" collapsible="icon" variant="sidebar" className="border-r">
+    <Sidebar side="left" collapsible="icon" variant="sidebar" className="border-r" role="complementary" aria-label="Admin navigation">
       <SidebarHeader className="flex items-center justify-between p-2">
         <div className="group-data-[collapsible=icon]:hidden">
           <Logo />
@@ -50,27 +50,30 @@ export default function AdminSidebar() {
         </SidebarTrigger>
       </SidebarHeader>
       <SidebarContent className="p-2">
-        <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.label}>
-              <Link href={item.href}>
-                <SidebarMenuButton
-                  isActive={pathname === item.href}
-                  tooltip={item.label}
-                  className={cn(
-                    'w-full justify-start',
-                    pathname === item.href && 'bg-primary text-primary-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4 mr-2" />
-                  <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        <nav aria-label="Admin navigation" role="navigation">
+          <SidebarMenu role="menu">
+            {menuItems.map((item) => (
+              <SidebarMenuItem key={item.label} role="none">
+                <Link href={item.href} role="menuitem">
+                  <SidebarMenuButton
+                    isActive={pathname === item.href}
+                    tooltip={item.label}
+                    className={cn(
+                      'w-full justify-start',
+                      pathname === item.href && 'bg-primary text-primary-foreground'
+                    )}
+                    aria-current={pathname === item.href ? 'page' : undefined}
+                  >
+                    <item.icon className="h-4 w-4 mr-2" />
+                    <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </nav>
       </SidebarContent>
-       <SidebarFooter className="p-2 group-data-[collapsible=icon]:hidden">
+       <SidebarFooter className="p-2 group-data-[collapsible=icon]:hidden" role="contentinfo" aria-label="Admin footer">
         <Button asChild><Link href="/home" className="w-full">Back to App</Link></Button>
       </SidebarFooter>
     </Sidebar>

@@ -10,7 +10,7 @@ Disallow: /profile/
 Disallow: /settings/
 
 # Allow access to sitemap
-Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/sitemap.xml
 
 # Crawl-delay for respectful crawling
 Crawl-delay: 1

@@ -12,25 +12,25 @@ function generateSitemap() {
   const sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://yourdomain.com/</loc>
+    <loc>https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/</loc>
     <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://yourdomain.com/categories</loc>
+    <loc>https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/categories</loc>
     <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://yourdomain.com/trending</loc>
+    <loc>https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/trending</loc>
     <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://yourdomain.com/live</loc>
+    <loc>https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/live</loc>
     <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.7</priority>
@@ -57,7 +57,7 @@ Disallow: /profile/
 Disallow: /settings/
 
 # Allow access to sitemap
-Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/sitemap.xml
 
 # Crawl-delay for respectful crawling
 Crawl-delay: 1
@@ -73,7 +73,7 @@ function enhanceStructuredData() {
   const enhancedSeo = `
 // Enhanced SEO utilities with additional structured data
 
-export function generateBreadcrumbStructuredData(breadcrumbs, baseUrl = 'https://yourdomain.com') {
+export function generateBreadcrumbStructuredData(breadcrumbs, baseUrl = 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app') {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -91,8 +91,8 @@ export function generateOrganizationStructuredData() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'PlayNite',
-    url: 'https://yourdomain.com',
-    logo: 'https://yourdomain.com/logo.png',
+    url: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app',
+    logo: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/logo.png',
     sameAs: [
       'https://twitter.com/playnite',
       'https://facebook.com/playnite'
@@ -110,10 +110,10 @@ export function generateWebSiteStructuredData() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'PlayNite',
-    url: 'https://yourdomain.com',
+    url: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app',
     potentialAction: {
       '@type': 'SearchAction',
-      target: 'https://yourdomain.com/search?q={search_term_string}',
+      target: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/search?q={search_term_string}',
       'query-input': 'required name=search_term_string'
     }
   };
@@ -133,7 +133,7 @@ import Head from 'next/head';
 
 export const CanonicalHead = ({ canonicalUrl }) => {
   const router = useRouter();
-  const canonical = canonicalUrl || \`https://yourdomain.com\${router.asPath}\`;
+  const canonical = canonicalUrl || \`https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app\${router.asPath}\`;
 
   return (
     <Head>
@@ -155,7 +155,7 @@ export const CanonicalHead = ({ canonicalUrl }) => {
 function enhanceSocialTags() {
   console.log('Enhancing social media tags...');
   const socialTags = `
-export function generateEnhancedSocialTags(video, baseUrl = 'https://yourdomain.com') {
+export function generateEnhancedSocialTags(video, baseUrl = 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app') {
   const title = video.title || 'PlayNite - Modern Video Streaming';
   const description = video.description || 'Watch high-quality videos on PlayNite.';
   const image = video.thumbnailUrl || \`\${baseUrl}/og-default.jpg\`;
@@ -219,14 +219,14 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://yourdomain.com'),
+  metadataBase: new URL('https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
     title: 'PlayNite - Modern Video Streaming Platform',
     description: 'Discover and stream high-quality videos on PlayNite.',
-    url: 'https://yourdomain.com',
+    url: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app',
     siteName: 'PlayNite',
     images: [
       {

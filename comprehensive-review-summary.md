@@ -1351,7 +1351,7 @@ Broad user base including casual viewers, families (via parental controls), cont
 
 ### Issues Identified
 - **Lighthouse Scores**: All metrics showing `null` values - indicates test failure
-- **Domain Placeholders**: All SEO metadata uses `yourdomain.com` placeholder
+- **Domain Placeholders**: All SEO metadata uses `play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app` placeholder
 - **Sitemap URLs**: Using placeholder domain instead of actual domain
 - **Robots.txt**: References placeholder domain
 - **Canonical URLs**: Using placeholder domain in components

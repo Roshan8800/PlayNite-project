@@ -159,64 +159,91 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-      {showBackButton ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => router.back()}
-          aria-label="Go back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-      ) : (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => router.push('/home')}
-          aria-label="Go home"
-        >
-          <Home className="h-5 w-5" />
-        </Button>
-      )}
-      <div className="hidden md:block">
-        <Link href="/home">
-          <Logo />
-        </Link>
-      </div>
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6" role="banner">
+      <nav aria-label="Primary navigation" role="navigation">
+        {showBackButton ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => router.back()}
+            aria-label="Go back to previous page"
+          >
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => router.push('/home')}
+            aria-label="Go to home page"
+          >
+            <Home className="h-5 w-5" aria-hidden="true" />
+          </Button>
+        )}
+        <div className="hidden md:block">
+          <Link href="/home" aria-label="PlayNite home">
+            <Logo />
+          </Link>
+        </div>
+      </nav>
+      <nav aria-label="Search navigation" role="navigation" className="relative flex-1 md:flex-initial md:ml-auto">
+        <form onSubmit={handleSearchSubmit} role="search" aria-label="Search videos">
+          <div className="relative">
+            <label htmlFor="search-input" className="sr-only">Search videos</label>
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="search-input"
+              type="search"
+              placeholder="Search videos..."
+              className="pl-8 w-full sm:w-[300px] md:w-[200px] lg:w-[300px]"
+              data-ai-hint="smart search suggestions"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onFocus={() => searchQuery.length > 2 && setIsPopoverOpen(true)}
+              aria-describedby="search-help"
+              aria-expanded={isPopoverOpen}
+              aria-haspopup="listbox"
+              role="combobox"
+              autoComplete="off"
+            />
+            <div id="search-help" className="sr-only">
+              Type at least 3 characters to see search suggestions
+            </div>
+          </div>
+        </form>
+        {suggestions.length > 0 && (
+          <div
+            className="absolute top-full left-0 right-0 z-50 mt-1"
+            role="listbox"
+            aria-label="Search suggestions"
+          >
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+              <PopoverContent className="p-0 w-full" align="start">
+                <SearchPopover suggestions={suggestions} onSuggestionClick={handleSuggestionClick} />
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+      </nav>
 
-      <div className="relative flex-1 md:flex-initial md:ml-auto">
-          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-           <PopoverTrigger asChild>
-             <form onSubmit={handleSearchSubmit} className="relative">
-               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-               <Input
-                 type="search"
-                 placeholder="Search videos..."
-                 className="pl-8 w-full sm:w-[300px] md:w-[200px] lg:w-[300px]"
-                 data-ai-hint="smart search suggestions"
-                 value={searchQuery}
-                 onChange={handleSearchChange}
-                 onFocus={() => searchQuery.length > 2 && setIsPopoverOpen(true)}
-               />
-             </form>
-           </PopoverTrigger>
-           {suggestions.length > 0 && (
-             <PopoverContent className="p-0 w-[300px] lg:w-[300px]" align="start">
-               <SearchPopover suggestions={suggestions} onSuggestionClick={handleSuggestionClick} />
-             </PopoverContent>
-           )}
-         </Popover>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {renderUserMenu()}
-        <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden" onClick={toggleSidebar} aria-label="Toggle Menu">
-          <Menu className="h-5 w-5" />
-        </Button>
-      </div>
+      <nav aria-label="User navigation" role="navigation">
+        <div className="flex items-center gap-2">
+          {renderUserMenu()}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 md:hidden"
+            onClick={toggleSidebar}
+            aria-label="Toggle navigation menu"
+            aria-expanded="false"
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          </Button>
+        </div>
+      </nav>
     </header>
   );
 }
+   

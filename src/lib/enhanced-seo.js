@@ -1,7 +1,7 @@
 
 // Enhanced SEO utilities with additional structured data
 
-export function generateBreadcrumbStructuredData(breadcrumbs, baseUrl = 'https://yourdomain.com') {
+export function generateBreadcrumbStructuredData(breadcrumbs, baseUrl = 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app') {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -19,8 +19,8 @@ export function generateOrganizationStructuredData() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'PlayNite',
-    url: 'https://yourdomain.com',
-    logo: 'https://yourdomain.com/logo.png',
+    url: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app',
+    logo: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/logo.png',
     sameAs: [
       'https://twitter.com/playnite',
       'https://facebook.com/playnite'
@@ -38,10 +38,10 @@ export function generateWebSiteStructuredData() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'PlayNite',
-    url: 'https://yourdomain.com',
+    url: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app',
     potentialAction: {
       '@type': 'SearchAction',
-      target: 'https://yourdomain.com/search?q={search_term_string}',
+      target: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app/search?q={search_term_string}',
       'query-input': 'required name=search_term_string'
     }
   };

@@ -5,47 +5,47 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 283 10% 20%;
+    --foreground: 0 0% 0%;
     --card: 0 0% 100%;
-    --card-foreground: 283 10% 20%;
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 283 10% 20%;
-    --primary: 283 71% 31%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 283 10% 20%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 283 5% 55%;
-    --accent: 340 82% 52%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 340 82% 52%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 283 71% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 35%;
+    --accent: 340 82% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 340 82% 55%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 0 0% 13%; /* #212121 */
-    --foreground: 0 0% 98%;
-    --card: 0 0% 17%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 13%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 283 71% 31%; /* #4A148C */
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 24%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 24%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 340 82% 52%; /* #E91E63 */
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 24%;
-    --input: 0 0% 24%;
-    --ring: 340 82% 52%;
+   --background: 0 0% 10%;
+   --foreground: 0 0% 100%;
+   --card: 0 0% 15%;
+   --card-foreground: 0 0% 100%;
+   --popover: 0 0% 15%;
+   --popover-foreground: 0 0% 100%;
+   --primary: 283 71% 70%;
+   --primary-foreground: 0 0% 0%;
+   --secondary: 0 0% 25%;
+   --secondary-foreground: 0 0% 100%;
+   --muted: 0 0% 30%;
+   --muted-foreground: 0 0% 75%;
+   --accent: 340 82% 70%;
+   --accent-foreground: 0 0% 0%;
+   --destructive: 0 84% 70%;
+   --destructive-foreground: 0 0% 0%;
+   --border: 0 0% 25%;
+   --input: 0 0% 25%;
+   --ring: 340 82% 70%;
   }
 }
 
@@ -56,4 +56,80 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* High contrast mode styles */
+@media (prefers-contrast: high) {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 90%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 20%;
+    --accent: 0 0% 0%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 0 0% 0%;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 80%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --ring: 0 0% 100%;
+  }
+}
+
+/* High contrast mode override class */
+.high-contrast {
+  --background: 0 0% 100% !important;
+  --foreground: 0 0% 0% !important;
+  --primary: 0 0% 0% !important;
+  --primary-foreground: 0 0% 100% !important;
+  --secondary: 0 0% 90% !important;
+  --secondary-foreground: 0 0% 0% !important;
+  --muted: 0 0% 90% !important;
+  --muted-foreground: 0 0% 20% !important;
+  --accent: 0 0% 0% !important;
+  --accent-foreground: 0 0% 100% !important;
+  --destructive: 0 0% 0% !important;
+  --destructive-foreground: 0 0% 100% !important;
+  --border: 0 0% 0% !important;
+  --input: 0 0% 0% !important;
+  --ring: 0 0% 0% !important;
+}
+
+.high-contrast.dark {
+  --background: 0 0% 0% !important;
+  --foreground: 0 0% 100% !important;
+  --primary: 0 0% 100% !important;
+  --primary-foreground: 0 0% 0% !important;
+  --secondary: 0 0% 10% !important;
+  --secondary-foreground: 0 0% 100% !important;
+  --muted: 0 0% 10% !important;
+  --muted-foreground: 0 0% 80% !important;
+  --accent: 0 0% 100% !important;
+  --accent-foreground: 0 0% 0% !important;
+  --destructive: 0 0% 100% !important;
+  --destructive-foreground: 0 0% 0% !important;
+  --border: 0 0% 100% !important;
+  --input: 0 0% 100% !important;
+  --ring: 0 0% 100% !important;
 }

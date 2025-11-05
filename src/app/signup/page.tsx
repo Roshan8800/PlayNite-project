@@ -13,6 +13,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { LoadingButton } from '@/components/ui/loading-button';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -288,19 +289,19 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md" role="main" aria-labelledby="signup-title">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
+          <CardTitle id="signup-title" className="text-2xl font-bold">Create Account</CardTitle>
           <CardDescription>
             Join PlayNite and start exploring
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form onSubmit={handleSignup} className="space-y-4">
+          <form onSubmit={handleSignup} className="space-y-4" noValidate>
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" aria-hidden="true" />
                 <Input
                   id="name"
                   type="text"
@@ -310,6 +311,9 @@ export default function SignupPage() {
                   className="pl-10"
                   disabled={loading || googleLoading}
                   required
+                  aria-describedby="name-error"
+                  aria-invalid={false}
+                  autoComplete="name"
                 />
               </div>
             </div>
@@ -317,7 +321,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" aria-hidden="true" />
                 <Input
                   id="email"
                   type="email"
@@ -327,6 +331,9 @@ export default function SignupPage() {
                   className="pl-10"
                   disabled={loading || googleLoading}
                   required
+                  aria-describedby="email-error"
+                  aria-invalid={false}
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -334,7 +341,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" aria-hidden="true" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -344,6 +351,9 @@ export default function SignupPage() {
                   className="pl-10 pr-10"
                   disabled={loading || googleLoading}
                   required
+                  aria-describedby="password-error password-requirements"
+                  aria-invalid={false}
+                  autoComplete="new-password"
                 />
                 <Button
                   type="button"
@@ -352,20 +362,25 @@ export default function SignupPage() {
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={loading || googleLoading}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <EyeOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   )}
                 </Button>
+              </div>
+              <div id="password-requirements" className="sr-only">
+                Password must be at least 8 characters long and contain uppercase, lowercase, and numeric characters
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" aria-hidden="true" />
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -375,6 +390,9 @@ export default function SignupPage() {
                   className="pl-10 pr-10"
                   disabled={loading || googleLoading}
                   required
+                  aria-describedby="confirm-password-error"
+                  aria-invalid={false}
+                  autoComplete="new-password"
                 />
                 <Button
                   type="button"
@@ -383,23 +401,27 @@ export default function SignupPage() {
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   disabled={loading || googleLoading}
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  aria-pressed={showConfirmPassword}
                 >
                   {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <EyeOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   )}
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-3">
+            <fieldset className="space-y-3">
+              <legend className="sr-only">Terms and Conditions</legend>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="agreeToAge"
                   checked={formData.agreeToAge}
                   onCheckedChange={(checked) => updateFormData('agreeToAge', checked)}
                   disabled={loading || googleLoading}
+                  required
                 />
                 <Label htmlFor="agreeToAge" className="text-sm">
                   I am 18 years or older
@@ -412,30 +434,33 @@ export default function SignupPage() {
                   checked={formData.agreeToTerms}
                   onCheckedChange={(checked) => updateFormData('agreeToTerms', checked)}
                   disabled={loading || googleLoading}
+                  required
                 />
                 <Label htmlFor="agreeToTerms" className="text-sm">
                   I agree to the{' '}
-                  <Link href="/terms-of-service" className="text-primary hover:underline">
+                  <Link href="/terms-of-service" className="text-primary hover:underline focus:outline-2 focus:outline-primary">
                     Terms of Service
                   </Link>{' '}
                   and{' '}
-                  <Link href="/privacy-policy" className="text-primary hover:underline">
+                  <Link href="/privacy-policy" className="text-primary hover:underline focus:outline-2 focus:outline-primary">
                     Privacy Policy
                   </Link>
                 </Label>
               </div>
-            </div>
+            </fieldset>
 
-            <Button
+            <LoadingButton
               type="submit"
               className="w-full"
+              loading={loading}
+              loadingText="Creating account..."
               disabled={loading || googleLoading}
             >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </Button>
+              Create Account
+            </LoadingButton>
           </form>
 
-          <div className="relative">
+          <div className="relative" role="separator" aria-label="Alternative sign-up options">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
             </div>
@@ -446,13 +471,16 @@ export default function SignupPage() {
             </div>
           </div>
 
-          <Button
+          <LoadingButton
             variant="outline"
             className="w-full"
             onClick={handleGoogleSignup}
-            disabled={loading || googleLoading}
+            loading={googleLoading}
+            loadingText="Creating account..."
+            disabled={loading}
+            aria-label="Sign up with Google"
           >
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="currentColor"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -470,18 +498,20 @@ export default function SignupPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            {googleLoading ? 'Creating account...' : 'Continue with Google'}
-          </Button>
+            Continue with Google
+          </LoadingButton>
 
-          <div className="text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
-            <Link
-              href="/login"
-              className="text-primary hover:underline"
-            >
-              Sign in
-            </Link>
-          </div>
+          <nav aria-label="Account options">
+            <div className="text-center text-sm">
+              <span className="text-muted-foreground">Already have an account? </span>
+              <Link
+                href="/login"
+                className="text-primary hover:underline focus:outline-2 focus:outline-primary"
+              >
+                Sign in
+              </Link>
+            </div>
+          </nav>
         </CardContent>
       </Card>
     </div>

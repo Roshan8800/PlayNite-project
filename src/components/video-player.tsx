@@ -749,7 +749,7 @@ const VideoPlayer = memo(function VideoPlayer({ video, className, enableAnalytic
     }
   }, [gestureState.gestureStartX, gestureState.gestureStartY, gestureState.brightness, playerState.volume, seek, changeVolume]);
   
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
        if ((e.target as HTMLElement).tagName === 'INPUT') return;
        e.preventDefault();
        switch(e.key.toLowerCase()) {
@@ -956,7 +956,6 @@ const VideoPlayer = memo(function VideoPlayer({ video, className, enableAnalytic
     showAndAutoHideControls();
     const container = playerContainerRef.current;
     container?.focus();
-    container?.addEventListener('keydown', handleKeyDown);
 
     return () => {
       if (controlsTimeoutRef.current) {
@@ -983,9 +982,8 @@ const VideoPlayer = memo(function VideoPlayer({ video, className, enableAnalytic
         clearTimeout(longPressTimeoutRef.current);
         longPressTimeoutRef.current = null;
       }
-      container?.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showAndAutoHideControls, handleKeyDown]);
+  }, [showAndAutoHideControls]);
 
   const qualities = ['1080p', '720p', '480p', 'Auto'];
   const speeds = [2, 1.5, 1, 0.5];
@@ -1291,12 +1289,12 @@ const VideoPlayer = memo(function VideoPlayer({ video, className, enableAnalytic
       }}
       tabIndex={0}
       className={cn(
-        'relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl bg-black group',
+        'relative aspect-video w-full overflow-hidden rounded-lg shadow-2xl bg-black group focus:outline-2 focus:outline-primary',
         className,
         playerState.isFullscreen && 'fixed inset-0 z-50 rounded-none'
       )}
       role="region"
-      aria-label="Video player"
+      aria-label={`Video player for ${video.title}`}
       aria-describedby="video-controls"
       onMouseMove={(e) => {
         showAndAutoHideControls();
@@ -1310,6 +1308,7 @@ const VideoPlayer = memo(function VideoPlayer({ video, className, enableAnalytic
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
+      onKeyDown={handleKeyDown}
     >
       <VideoLoader
         sources={videoSources}
@@ -1467,15 +1466,15 @@ const VideoPlayer = memo(function VideoPlayer({ video, className, enableAnalytic
           <Button
             variant="ghost"
             size="icon"
-            className="hover:bg-white/20"
+            className="hover:bg-white/20 focus:outline-2 focus:outline-white"
             onClick={(e) => {e.stopPropagation(); togglePlay();}}
             aria-label={playerState.isPlaying ? 'Pause video' : 'Play video'}
             aria-pressed={playerState.isPlaying}
           >
             {playerState.isPlaying ? (
-              <Pause className="h-5 w-5" />
+              <Pause className="h-5 w-5" aria-hidden="true" />
             ) : (
-              <Play className="h-5 w-5" />
+              <Play className="h-5 w-5" aria-hidden="true" />
             )}
           </Button>
           <div className="flex items-center gap-2 group/volume">

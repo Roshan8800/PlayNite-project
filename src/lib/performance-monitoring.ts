@@ -414,34 +414,114 @@ export class PerformanceBudget {
   }
 }
 
+// Memory usage monitoring
+export class MemoryMonitor {
+  private static memoryHistory: number[] = [];
+  private static maxHistorySize = 50;
+
+  static getMemoryUsage(): { used: number; total: number; limit: number } | null {
+    if (typeof performance === 'undefined' || !(performance as any).memory) {
+      return null;
+    }
+
+    const memory = (performance as any).memory;
+    return {
+      used: memory.usedJSHeapSize,
+      total: memory.totalJSHeapSize,
+      limit: memory.jsHeapSizeLimit,
+    };
+  }
+
+  static recordMemoryUsage(): void {
+    const memory = this.getMemoryUsage();
+    if (memory) {
+      this.memoryHistory.push(memory.used);
+      if (this.memoryHistory.length > this.maxHistorySize) {
+        this.memoryHistory.shift();
+      }
+
+      // Report if memory usage is high (>80% of limit)
+      const usagePercent = (memory.used / memory.limit) * 100;
+      if (usagePercent > 80) {
+        PerformanceMonitor['reportMetric']('High_Memory_Usage', usagePercent);
+      }
+    }
+  }
+
+  static getMemoryTrend(): 'increasing' | 'decreasing' | 'stable' {
+    if (this.memoryHistory.length < 5) return 'stable';
+
+    const recent = this.memoryHistory.slice(-5);
+    const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const avgOlder = this.memoryHistory.slice(0, -5).reduce((a, b) => a + b, 0) / Math.max(1, this.memoryHistory.length - 5);
+
+    const change = avgRecent - avgOlder;
+    const threshold = avgOlder * 0.1; // 10% change threshold
+
+    if (change > threshold) return 'increasing';
+    if (change < -threshold) return 'decreasing';
+    return 'stable';
+  }
+
+  static forceGarbageCollection(): void {
+    if (typeof window !== 'undefined' && (window as any).gc) {
+      (window as any).gc();
+    }
+  }
+}
+
+// Network performance monitoring
+export class NetworkMonitor {
+  private static connection: any = null;
+  private static isOnline = true;
+
+  static initialize(): void {
+    if (typeof navigator !== 'undefined' && 'connection' in navigator) {
+      this.connection = (navigator as any).connection;
+      this.connection.addEventListener('change', this.handleConnectionChange.bind(this));
+    }
+
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      PerformanceMonitor['reportMetric']('Network_Online', 1);
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      PerformanceMonitor['reportMetric']('Network_Offline', 0);
+    });
+  }
+
+  private static handleConnectionChange(): void {
+    if (this.connection) {
+      const effectiveType = this.connection.effectiveType;
+      const downlink = this.connection.downlink;
+      const rtt = this.connection.rtt;
+
+      PerformanceMonitor['reportMetric']('Network_Effective_Type', effectiveType === '4g' ? 4 : effectiveType === '3g' ? 3 : 2);
+      PerformanceMonitor['reportMetric']('Network_Downlink', downlink);
+      PerformanceMonitor['reportMetric']('Network_RTT', rtt);
+    }
+  }
+
+  static getConnectionInfo(): { effectiveType: string; downlink: number; rtt: number } | null {
+    if (!this.connection) return null;
+
+    return {
+      effectiveType: this.connection.effectiveType,
+      downlink: this.connection.downlink,
+      rtt: this.connection.rtt,
+    };
+  }
+
+  static isSlowConnection(): boolean {
+    const info = this.getConnectionInfo();
+    return info ? info.effectiveType === 'slow-2g' || info.effectiveType === '2g' : false;
+  }
+}
+
 // Initialize performance monitoring
 export function initializePerformanceMonitoring(): void {
-  if (typeof window === 'undefined') return;
-
   PerformanceMonitor.initialize();
-  LoadingAnalytics.startTracking();
-
-  // Mark key milestones
-  window.addEventListener('DOMContentLoaded', () => {
-    LoadingAnalytics.markMilestone('dom_content_loaded');
-  });
-
-  window.addEventListener('load', () => {
-    LoadingAnalytics.markMilestone('window_load');
-    LoadingAnalytics.reportLoadComplete();
-
-    // Calculate UX score after load
-    setTimeout(() => {
-      const score = UXScore.calculateUXScore();
-      const rating = UXScore.getUXRating();
-
-      console.log(`[UX Score] ${score.toFixed(1)} - ${rating}`);
-
-      // Check performance budget
-      const budget = PerformanceBudget.checkBudget();
-      if (budget.exceeded.length > 0) {
-        console.warn('[Performance Budget] Exceeded:', budget.exceeded);
-      }
-    }, 100);
-  });
+  NetworkMonitor.initialize();
 }

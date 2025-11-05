@@ -4,8 +4,11 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AgeGate } from '@/components/age-gate';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { PerformanceDashboard } from '@/components/performance-dashboard';
 import { initializePerformanceMonitoring } from '@/lib/performance-monitoring';
 import { initializeOptimizations } from '@/lib/bundle-optimization';
+import { initializeProductionOptimizations } from '@/lib/performance-optimization';
+import { AccessibilityProvider } from '@/components/accessibility-provider';
 
 
 
@@ -21,14 +24,14 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://yourdomain.com'),
+  metadataBase: new URL('https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
     title: 'PlayNite - Modern Video Streaming Platform',
     description: 'Discover and stream high-quality videos on PlayNite.',
-    url: 'https://yourdomain.com',
+    url: 'https://play-nite-project-git-main-roshans-projects-2d6e3f6b.vercel.app',
     siteName: 'PlayNite',
     images: [
       {
@@ -65,6 +68,11 @@ export const metadata: Metadata = {
     google: 'your-google-verification-code',
     yandex: 'your-yandex-verification-code',
   },
+  // Accessibility metadata
+  other: {
+    'color-scheme': 'dark light',
+    'supported-color-schemes': 'dark light',
+  },
 };
 
 
@@ -78,6 +86,7 @@ export default function RootLayout({
   if (typeof window !== 'undefined') {
     initializePerformanceMonitoring();
     initializeOptimizations();
+    initializeProductionOptimizations();
   }
 
   return (
@@ -95,14 +104,17 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.gstatic.com" />
       </head>
       <body className="font-body antialiased">
-        <ErrorBoundary>
-          <AgeGate>
-            <FirebaseClientProvider>
-              {children}
-            </FirebaseClientProvider>
-          </AgeGate>
-        </ErrorBoundary>
-        <Toaster />
+        <AccessibilityProvider>
+          <ErrorBoundary>
+            <AgeGate>
+              <FirebaseClientProvider>
+                {children}
+                <PerformanceDashboard />
+              </FirebaseClientProvider>
+            </AgeGate>
+          </ErrorBoundary>
+          <Toaster />
+        </AccessibilityProvider>
       </body>
     </html>
   );
