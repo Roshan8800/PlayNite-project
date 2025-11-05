@@ -34,7 +34,8 @@ export function AgeGate({ children }: AgeGateProps) {
     expiryDate.setDate(expiryDate.getDate() + 30);
     document.cookie = `age_verified=true; expires=${expiryDate.toUTCString()}; path=/; SameSite=Strict`;
 
-    setIsVerified(true);
+    // Force a reload to ensure a clean re-render
+    window.location.reload();
   };
 
   const handleDecline = () => {
