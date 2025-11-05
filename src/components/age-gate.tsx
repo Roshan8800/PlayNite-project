@@ -14,16 +14,17 @@ export function AgeGate({ children }: AgeGateProps) {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   useEffect(() => {
-    // Check for age verification cookie
-    const cookieValue = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('age_verified='))
-      ?.split('=')[1];
+    if (typeof window !== 'undefined') {
+      const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('age_verified='))
+        ?.split('=')[1];
 
-    if (cookieValue === 'true') {
-      setIsVerified(true);
-    } else {
-      setIsVerified(false);
+      if (cookieValue === 'true') {
+        setIsVerified(true);
+      } else {
+        setIsVerified(false);
+      }
     }
   }, []);
 
