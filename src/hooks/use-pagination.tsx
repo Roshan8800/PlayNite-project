@@ -122,6 +122,14 @@ export function usePagination({
     updateUrl(initialPage, initialPageSize);
   }, [initialPage, initialPageSize, updateUrl]);
 
+  // Adjust page number if total items change and current page becomes invalid
+  useEffect(() => {
+    const newTotalPages = Math.ceil(totalItems / pageSize);
+    if (newTotalPages > 0 && currentPage > newTotalPages) {
+      setPage(newTotalPages);
+    }
+  }, [totalItems, pageSize, currentPage, setPage]);
+
   // Update state when URL changes (for browser back/forward)
   useEffect(() => {
     if (!syncWithUrl) return;
